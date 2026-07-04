@@ -1,5 +1,11 @@
 // Mirrors packages/contract/schema.json. Keep in sync with the backend Pydantic
 // models in backend/app/core/schema.py.
+//
+// StateProof display aliases (schema unchanged until backend lands):
+//   design_violation      → damage
+//   technical_noise       → normal_wear
+//   intentional_evolution → agreed_change
+//   drift_score           → damage charge total (€)
 
 export type Classification =
   | "aligned"
@@ -52,6 +58,8 @@ export interface EvolutionProposal {
 export interface AuditPayload {
   audit_id: string;
   pr_number: number;
+  /** License plate / asset key when present (StateProof: asset_id). */
+  asset_id?: string;
   drift_score: number;
   screenshot_url: string;
   design_tree: TreeNode;

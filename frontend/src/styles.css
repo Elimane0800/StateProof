@@ -65,7 +65,16 @@ html,
   align-items: center;
   gap: 14px;
 }
-.topbar__pr,
+.topbar__plate {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-family: "JetBrains Mono", monospace;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
 .topbar__audit {
   font-size: 12px;
   color: var(--muted);
@@ -226,10 +235,60 @@ html,
   font-style: italic;
 }
 
+/* Photo evidence */
+.evidence {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.evidence__photo label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.evidence__frame {
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-2);
+  display: grid;
+  place-items: center;
+}
+.evidence__frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.evidence__frame--pickup {
+  border-style: dashed;
+}
+.evidence__placeholder {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  padding: 8px;
+}
+.cost {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 4px 0 0;
+}
+.cost--zero {
+  color: #22c55e;
+}
+
 /* Prompt box */
 .promptbox {
   border-top: 1px solid var(--border);
   padding-top: 14px;
+}
+.promptbox__actions {
+  flex-wrap: wrap;
 }
 .promptbox textarea {
   width: 100%;

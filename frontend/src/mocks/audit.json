@@ -1,6 +1,7 @@
 {
   "audit_id": "pr-1-run-1",
   "pr_number": 1,
+  "asset_id": "AB-123-CD",
   "drift_score": 72,
   "screenshot_url": "/artifacts/pr-1-run-1.png",
   "design_tree": {

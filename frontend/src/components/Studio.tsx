@@ -33,7 +33,11 @@ export function Studio({ auditId }: Props) {
 
   return (
     <div className="studio">
-      <DriftScore score={audit.drift_score} prNumber={audit.pr_number} auditId={audit.audit_id} />
+      <DriftScore
+        score={audit.drift_score}
+        auditId={audit.audit_id}
+        assetId={audit.asset_id}
+      />
       <main className="studio__body">
         <GraphView
           audit={audit}
@@ -46,7 +50,7 @@ export function Studio({ auditId }: Props) {
           onGeneratedPatch={setLastPatch}
         />
       </main>
-      {lastPatch && <div className="sr-only">Patch generated: {lastPatch.prompt}</div>}
+      {lastPatch && <div className="sr-only">Letter generated: {lastPatch.prompt}</div>}
     </div>
   );
 }

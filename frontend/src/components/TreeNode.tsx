@@ -3,10 +3,10 @@ import type { Classification } from "../types/contract";
 import type { TreeNodeData } from "../lib/layout";
 
 export const CLASS_COLORS: Record<Classification, { border: string; bg: string; label: string }> = {
-  aligned: { border: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "Aligned" },
-  design_violation: { border: "#ef4444", bg: "rgba(239,68,68,0.14)", label: "Violation" },
-  technical_noise: { border: "#6b7280", bg: "rgba(107,114,128,0.14)", label: "Noise (ignored)" },
-  intentional_evolution: { border: "#f59e0b", bg: "rgba(245,158,11,0.14)", label: "Evolution" },
+  aligned: { border: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "No charge" },
+  design_violation: { border: "#ef4444", bg: "rgba(239,68,68,0.14)", label: "Damage" },
+  technical_noise: { border: "#6b7280", bg: "rgba(107,114,128,0.14)", label: "Normal wear" },
+  intentional_evolution: { border: "#f59e0b", bg: "rgba(245,158,11,0.14)", label: "Agreed change" },
 };
 
 export function TreeNodeCard({ data, selected }: NodeProps<TreeNodeData>) {

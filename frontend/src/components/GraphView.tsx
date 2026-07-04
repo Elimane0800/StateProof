@@ -37,8 +37,8 @@ export function GraphView({ audit, selectedNodeId, onSelectNode }: Props) {
   return (
     <div className="graph-view">
       <div className="graph-view__headers">
-        <span>Design intent (Figma)</span>
-        <span>Implementation (code)</span>
+        <span>Pickup</span>
+        <span>Return</span>
       </div>
       <ReactFlow
         nodes={decorated}
