@@ -1,6 +1,6 @@
 # Frontend track — StateProof Studio
 
-> **Branch:** `feat/frontend` · **Owner:** Salam · **Done by T+3:00**
+> **Branch:** `feat/frontend` · **Owner:** Abdul · **Done by T+3:00**
 > **Allowed paths:** `frontend/src/**` only — do not touch `backend/`, `packages/`, `demo/`.
 
 Work from seeded mocks (`frontend/src/mocks/audit.json`) — no live backend required until
@@ -137,7 +137,7 @@ Only after F1–F7 are green:
 
 ---
 
-## First-hour checklist (Salam)
+## First-hour checklist (Abdul)
 
 After bootstrap merges to `main` (or work on `feat/frontend` rebased onto it):
 
