@@ -2,55 +2,109 @@ import { useState } from "react";
 import { postFix } from "../api/client";
 import type { CursorPatch } from "../types/contract";
 
+type LetterMode = "dispute" | "charge";
+
 interface Props {
   auditId: string;
   nodeId: string;
   onGeneratedPatch: (patch: CursorPatch) => void;
 }
 
+const MODE_LABELS: Record<LetterMode, { label: string; placeholder: string; prefix: string }> = {
+  dispute: {
+    label: "Generate dispute letter",
+    placeholder: 'e.g. "Scratch was visible at pickup — cite baseline photos and dismiss the charge"',
+    prefix: "Generate a dispute letter for the renter:",
+  },
+  charge: {
+    label: "Generate charge notice",
+    placeholder: 'e.g. "Document new bumper scratch with cited standard and €280 repair estimate"',
+    prefix: "Generate a damage charge notice for the rental desk:",
+  },
+};
+
+const speechSupported =
+  typeof window !== "undefined" && "speechSynthesis" in window;
+
 export function PromptBox({ auditId, nodeId, onGeneratedPatch }: Props) {
   const [prompt, setPrompt] = useState("");
   const [patch, setPatch] = useState<CursorPatch | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<LetterMode | null>(null);
+  const [speaking, setSpeaking] = useState(false);
 
-  const submit = async () => {
+  const submit = async (letterMode: LetterMode) => {
     if (!prompt.trim()) return;
+    setMode(letterMode);
     setBusy(true);
     setError(null);
+    const fullPrompt = `${MODE_LABELS[letterMode].prefix} ${prompt.trim()}`;
     try {
-      const result = await postFix(auditId, nodeId, prompt.trim());
+      const result = await postFix(auditId, nodeId, fullPrompt);
       setPatch(result);
       onGeneratedPatch(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate patch.");
+      setError(err instanceof Error ? err.message : "Failed to generate letter.");
     } finally {
       setBusy(false);
     }
   };
 
+  const readAloud = () => {
+    if (!patch || !speechSupported) return;
+    window.speechSynthesis.cancel();
+    const text = patch.diff || patch.prompt;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+    setSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const activeMode = mode ?? "dispute";
+
   return (
     <section className="promptbox">
-      <label>Ask for a fix</label>
+      <label>Resolution</label>
       <textarea
         value={prompt}
-        placeholder={`e.g. "make this button follow the warning variant instead"`}
+        placeholder={MODE_LABELS.dispute.placeholder}
         onChange={(e) => setPrompt(e.target.value)}
         rows={2}
       />
-      <div className="row">
-        <button className="btn btn--primary" onClick={submit} disabled={busy}>
-          {busy ? "Generating…" : "Generate patch"}
+      <div className="row promptbox__actions">
+        <button
+          className="btn btn--primary"
+          onClick={() => submit("dispute")}
+          disabled={busy}
+        >
+          {busy && mode === "dispute" ? "Generating…" : MODE_LABELS.dispute.label}
         </button>
-        <span className="hint">Generates a patch — never auto-commits.</span>
+        <button
+          className="btn btn--ghost"
+          onClick={() => submit("charge")}
+          disabled={busy}
+        >
+          {busy && mode === "charge" ? "Generating…" : MODE_LABELS.charge.label}
+        </button>
       </div>
+      <span className="hint">Draft only — review before sending to renter or desk.</span>
       {error && <p className="error">{error}</p>}
       {patch && (
         <>
+          <label>{activeMode === "dispute" ? "Dispute letter" : "Charge notice"}</label>
           <pre className="diff">{patch.diff}</pre>
-          <button className="btn btn--ghost" onClick={() => navigator.clipboard?.writeText(patch.prompt)}>
-            Copy Cursor prompt
-          </button>
+          <div className="row">
+            <button className="btn btn--ghost" onClick={() => navigator.clipboard?.writeText(patch.prompt)}>
+              Copy letter
+            </button>
+            {speechSupported && (
+              <button className="btn btn--ghost" onClick={readAloud} disabled={speaking}>
+                {speaking ? "Reading…" : "Read aloud"}
+              </button>
+            )}
+          </div>
         </>
       )}
     </section>

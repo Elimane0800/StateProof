@@ -11,6 +11,10 @@ export default function App() {
   const [auditId, setAuditId] = useState(auditIdFromHash());
 
   useEffect(() => {
+    document.title = "StateProof — Proof of how it was.";
+  }, []);
+
+  useEffect(() => {
     const onHash = () => setAuditId(auditIdFromHash());
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);

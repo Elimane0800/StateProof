@@ -1,131 +1,175 @@
 {
   "audit_id": "pr-1-run-1",
   "pr_number": 1,
-  "drift_score": 72,
-  "screenshot_url": "/artifacts/pr-1-run-1.png",
+  "asset_id": "AB-123-CD",
+  "drift_score": 120,
+  "pickup_screenshot_url": "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400&h=300&fit=crop",
+  "screenshot_url": "https://images.unsplash.com/photo-1503376780353-7e66927659b6?w=400&h=300&fit=crop",
   "design_tree": {
-    "id": "card",
-    "label": "StatusCard",
-    "type": "container",
+    "id": "vehicle",
+    "label": "Vehicle",
+    "type": "body",
     "classification": "aligned",
-    "props": { "variant": "danger", "radius": "radius-md", "padding": "spacing-md" },
+    "props": { "make": "VW", "model": "Golf", "colour": "silver" },
     "children": [
       {
-        "id": "icon",
-        "label": "Icon",
-        "type": "icon",
+        "id": "front_bumper",
+        "label": "Front Bumper",
+        "type": "panel",
         "classification": "aligned",
-        "props": { "color": "color-danger" },
+        "props": { "condition": "light stone chips — within BVRLA limit" },
         "children": []
       },
       {
-        "id": "content",
-        "label": "Content",
-        "type": "container",
+        "id": "hood",
+        "label": "Hood",
+        "type": "panel",
         "classification": "aligned",
-        "props": { "gap": "spacing-sm" },
-        "children": [
-          {
-            "id": "title",
-            "label": "Title",
-            "type": "text",
-            "classification": "aligned",
-            "props": { "font": "font-heading", "color": "color-text" },
-            "children": []
-          },
-          {
-            "id": "description",
-            "label": "Description",
-            "type": "text",
-            "classification": "aligned",
-            "props": { "font": "font-body", "color": "color-text" },
-            "children": []
-          }
-        ]
+        "props": { "condition": "no new marks" },
+        "children": []
       },
       {
-        "id": "btn-primary",
-        "label": "Action Button",
-        "type": "button",
+        "id": "windshield",
+        "label": "Windshield",
+        "type": "glass",
         "classification": "aligned",
-        "props": { "background": "color-danger", "radius": "radius-md", "padding": "spacing-md" },
+        "props": { "condition": "clear" },
+        "children": []
+      },
+      {
+        "id": "door_fl",
+        "label": "Door FL",
+        "type": "panel",
+        "classification": "intentional_evolution",
+        "props": { "registered_scratch": "15 cm horizontal, mid-panel", "logged_at": "pickup" },
+        "children": []
+      },
+      {
+        "id": "door_fr",
+        "label": "Door FR",
+        "type": "panel",
+        "classification": "aligned",
+        "props": { "condition": "no damage recorded" },
+        "children": []
+      },
+      {
+        "id": "wheel_fl",
+        "label": "Wheel FL",
+        "type": "wheel",
+        "classification": "aligned",
+        "props": { "condition": "curb rash within standard" },
+        "children": []
+      },
+      {
+        "id": "rear",
+        "label": "Rear",
+        "type": "panel",
+        "classification": "aligned",
+        "props": { "condition": "clean" },
         "children": []
       }
     ]
   },
   "code_tree": {
-    "id": "card",
-    "label": "StatusCard",
-    "type": "container",
+    "id": "vehicle",
+    "label": "Vehicle",
+    "type": "body",
     "classification": "aligned",
-    "props": { "variant": "danger", "radius": "radius-md", "padding": "spacing-md" },
+    "props": { "make": "VW", "model": "Golf", "colour": "silver" },
     "children": [
       {
-        "id": "icon",
-        "label": "Icon",
-        "type": "icon",
-        "classification": "aligned",
-        "props": { "color": "color-danger" },
+        "id": "front_bumper",
+        "label": "Front Bumper",
+        "type": "panel",
+        "classification": "technical_noise",
+        "props": { "condition": "stone chip dust — unchanged vs pickup" },
         "children": []
       },
       {
-        "id": "content",
-        "label": "Content",
-        "type": "container",
+        "id": "hood",
+        "label": "Hood",
+        "type": "panel",
         "classification": "aligned",
-        "props": { "gap": "spacing-sm" },
-        "children": [
-          {
-            "id": "title",
-            "label": "Title",
-            "type": "text",
-            "classification": "aligned",
-            "props": { "font": "font-heading", "color": "color-text" },
-            "children": []
-          },
-          {
-            "id": "description",
-            "label": "Description",
-            "type": "text",
-            "classification": "aligned",
-            "props": { "font": "font-body", "color": "color-text" },
-            "children": []
-          }
-        ]
+        "props": { "condition": "no new marks" },
+        "children": []
       },
       {
-        "id": "btn-primary",
-        "label": "Action Button",
-        "type": "button",
+        "id": "windshield",
+        "label": "Windshield",
+        "type": "glass",
+        "classification": "aligned",
+        "props": { "condition": "clear" },
+        "children": []
+      },
+      {
+        "id": "door_fl",
+        "label": "Door FL",
+        "type": "panel",
+        "classification": "technical_noise",
+        "props": { "scratch": "same 15 cm mark — no extension" },
+        "children": []
+      },
+      {
+        "id": "door_fr",
+        "label": "Door FR",
+        "type": "panel",
         "classification": "design_violation",
-        "props": { "background": "#ef4444", "radius": "radius-md", "padding": "spacing-md" },
+        "props": { "dent": "40 mm crease, lower edge — new vs baseline" },
+        "children": []
+      },
+      {
+        "id": "wheel_fl",
+        "label": "Wheel FL",
+        "type": "wheel",
+        "classification": "aligned",
+        "props": { "condition": "curb rash within standard" },
+        "children": []
+      },
+      {
+        "id": "rear",
+        "label": "Rear",
+        "type": "panel",
+        "classification": "aligned",
+        "props": { "condition": "clean" },
         "children": []
       }
     ]
   },
   "findings": [
     {
-      "type": "token_violation",
+      "type": "new_damage",
       "classification": "design_violation",
-      "severity": "high",
-      "location": "StatusCard.tsx:14",
-      "node_id": "btn-primary",
-      "bbox": [120, 48, 340, 92],
-      "expected": "var(--color-danger)",
-      "actual": "#ef4444",
-      "reasoning": "Hex value matches token color-danger exactly; hardcoding breaks theme propagation.",
+      "severity": "medium",
+      "location": "door_fr — lower edge",
+      "node_id": "door_fr",
+      "bbox": [180, 220, 320, 380],
+      "expected": "No panel deformation (pickup baseline)",
+      "actual": "40 mm crease with paint fracture — not present at pickup",
+      "reasoning": "Return inspection shows a fresh dent on the front-right door that is absent from pickup photos and the condition registry. RCAR Fair Wear & Tear Guide §4.2 treats this as chargeable new damage, not acceptable wear.",
       "cursor_patch": {
-        "prompt": "Replace the hardcoded #ef4444 on line 14 with var(--color-danger) from our design tokens.",
-        "diff": "- color: #ef4444;\n+ color: var(--color-danger);"
+        "prompt": "Issue damage charge notice for door_fr: 40 mm crease with paint fracture, €120 panel repair per cited RCAR standard. Include pickup baseline comparison.",
+        "diff": "Damage Charge Notice — Vehicle AB-123-CD\n\nPanel: Front-right door (door_fr)\nFinding: 40 mm crease, lower edge, with paint fracture\nBaseline: No deformation recorded at pickup (see attached photos)\nStandard cited: RCAR Fair Wear & Tear Guide §4.2\nIndicative repair: €120\n\nThis damage was not present at handover and exceeds fair wear limits."
       }
     }
   ],
   "ignored_as_noise": [
     {
-      "element": "div.scroll-wrapper",
-      "node_id": null,
-      "reasoning": "Structural wrapper required for overflow handling; no visual or semantic impact."
+      "element": "door_fl — registered scratch",
+      "node_id": "door_fl",
+      "reasoning": "THE REGISTRY MOMENT: A 15 cm horizontal scratch on the front-left door was photographed and logged at pickup. Return photos show the identical mark with no extension or deepening. BVRLA Fair Wear Standard — pre-existing surface marks registered at handover are not chargeable."
+    },
+    {
+      "element": "front_bumper — stone chip dust",
+      "node_id": "front_bumper",
+      "reasoning": "Fine stone-chip speckling on the front bumper matches pickup baseline. Chip diameter under 3 mm and count within BVRLA acceptable limits for rental mileage — classified as normal wear, not new damage."
     }
   ],
-  "evolution_proposals": []
+  "evolution_proposals": [
+    {
+      "element": "roof box — Thule Motion XT",
+      "node_id": "rear",
+      "reasoning": "Renter declared roof box fitted at pickup; addendum signed and photographed. Return shows same unit fitted — agreed change, not damage.",
+      "proposal": "Roof box (Thule Motion XT) recorded on rental addendum at pickup — €0 charge on return."
+    }
+  ]
 }
