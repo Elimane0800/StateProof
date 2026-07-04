@@ -23,12 +23,16 @@ const MODE_LABELS: Record<LetterMode, { label: string; placeholder: string; pref
   },
 };
 
+const speechSupported =
+  typeof window !== "undefined" && "speechSynthesis" in window;
+
 export function PromptBox({ auditId, nodeId, onGeneratedPatch }: Props) {
   const [prompt, setPrompt] = useState("");
   const [patch, setPatch] = useState<CursorPatch | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<LetterMode | null>(null);
+  const [speaking, setSpeaking] = useState(false);
 
   const submit = async (letterMode: LetterMode) => {
     if (!prompt.trim()) return;
@@ -45,6 +49,17 @@ export function PromptBox({ auditId, nodeId, onGeneratedPatch }: Props) {
     } finally {
       setBusy(false);
     }
+  };
+
+  const readAloud = () => {
+    if (!patch || !speechSupported) return;
+    window.speechSynthesis.cancel();
+    const text = patch.diff || patch.prompt;
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+    setSpeaking(true);
+    window.speechSynthesis.speak(utterance);
   };
 
   const activeMode = mode ?? "dispute";
@@ -80,9 +95,16 @@ export function PromptBox({ auditId, nodeId, onGeneratedPatch }: Props) {
         <>
           <label>{activeMode === "dispute" ? "Dispute letter" : "Charge notice"}</label>
           <pre className="diff">{patch.diff}</pre>
-          <button className="btn btn--ghost" onClick={() => navigator.clipboard?.writeText(patch.prompt)}>
-            Copy letter
-          </button>
+          <div className="row">
+            <button className="btn btn--ghost" onClick={() => navigator.clipboard?.writeText(patch.prompt)}>
+              Copy letter
+            </button>
+            {speechSupported && (
+              <button className="btn btn--ghost" onClick={readAloud} disabled={speaking}>
+                {speaking ? "Reading…" : "Read aloud"}
+              </button>
+            )}
+          </div>
         </>
       )}
     </section>

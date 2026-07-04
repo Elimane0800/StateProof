@@ -61,7 +61,10 @@ export interface AuditPayload {
   /** License plate / asset key when present (StateProof: asset_id). */
   asset_id?: string;
   drift_score: number;
+  /** Return inspection photo URL (StateProof: return screenshot). */
   screenshot_url: string;
+  /** Pickup baseline photo URL when present (StateProof: pickup inspection). */
+  pickup_screenshot_url?: string;
   design_tree: TreeNode;
   code_tree: TreeNode;
   findings: Finding[];

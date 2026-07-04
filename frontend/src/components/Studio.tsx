@@ -19,8 +19,13 @@ export function Studio({ auditId }: Props) {
     getReport(auditId).then((payload) => {
       if (!alive) return;
       setAudit(payload);
-      const firstViolation = payload.findings[0]?.node_id ?? null;
-      setSelectedNodeId(firstViolation);
+      const registryHero =
+        payload.ignored_as_noise.find((n) => n.node_id === "door_fl")?.node_id ??
+        payload.ignored_as_noise.find((n) =>
+          n.reasoning.toLowerCase().includes("registry")
+        )?.node_id ??
+        null;
+      setSelectedNodeId(registryHero ?? payload.findings[0]?.node_id ?? null);
     });
     return () => {
       alive = false;
@@ -31,12 +36,21 @@ export function Studio({ auditId }: Props) {
     return <div className="loading">Loading audit…</div>;
   }
 
+  const selectedClassification =
+    audit.findings.find((f) => f.node_id === selectedNodeId)?.classification ??
+    (audit.ignored_as_noise.some((n) => n.node_id === selectedNodeId)
+      ? ("technical_noise" as const)
+      : audit.evolution_proposals.some((e) => e.node_id === selectedNodeId)
+        ? ("intentional_evolution" as const)
+        : null);
+
   return (
     <div className="studio">
       <DriftScore
         score={audit.drift_score}
         auditId={audit.audit_id}
         assetId={audit.asset_id}
+        selectedClassification={selectedClassification}
       />
       <main className="studio__body">
         <GraphView

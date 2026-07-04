@@ -1,4 +1,5 @@
-import type { AuditPayload, CursorPatch, Severity } from "../types/contract";
+import { useState } from "react";
+import type { AuditPayload, CursorPatch, Classification, Severity } from "../types/contract";
 import { CLASS_COLORS } from "./TreeNode";
 import { PromptBox } from "./PromptBox";
 
@@ -13,6 +14,24 @@ const SEVERITY_COST: Record<Severity, number> = {
   medium: 120,
   high: 280,
 };
+
+const BADGE_LABELS: Record<Classification, string> = {
+  design_violation: "Damage",
+  technical_noise: "Normal wear — dismissed",
+  intentional_evolution: "Agreed change — on file",
+  aligned: "No charge",
+};
+
+function classificationTag(classification: Classification, extra?: string) {
+  const colors = CLASS_COLORS[classification];
+  const label = BADGE_LABELS[classification];
+  return (
+    <span className="tag" style={{ color: colors.border }}>
+      ● {label}
+      {extra ? ` · ${extra}` : ""}
+    </span>
+  );
+}
 
 const STANDARD_CITATIONS: Record<string, string> = {
   design_violation: "RCAR Fair Wear & Tear Guide §4.2 — new damage vs baseline",
@@ -29,25 +48,33 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function EvidencePhotos({ screenshotUrl }: { screenshotUrl: string }) {
+function EvidenceFrame({ label, url, variant }: { label: string; url?: string; variant: "pickup" | "return" }) {
+  const [failed, setFailed] = useState(false);
+  const showImage = url && !failed;
+
+  return (
+    <div className="evidence__photo">
+      <label>{label}</label>
+      <div className={`evidence__frame evidence__frame--${variant}`}>
+        {showImage ? (
+          <img src={url} alt={`${label} inspection`} onError={() => setFailed(true)} />
+        ) : (
+          <div className="evidence__fallback">
+            <span className="evidence__fallback-icon">{variant === "pickup" ? "📷" : "🔍"}</span>
+            <span className="evidence__fallback-label">{label} inspection</span>
+            <span className="evidence__fallback-hint">Vehicle AB-123-CD</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EvidencePhotos({ pickupUrl, returnUrl }: { pickupUrl?: string; returnUrl: string }) {
   return (
     <div className="evidence">
-      <div className="evidence__photo">
-        <label>Pickup</label>
-        <div className="evidence__frame evidence__frame--pickup">
-          <span className="evidence__placeholder">Baseline photo</span>
-        </div>
-      </div>
-      <div className="evidence__photo">
-        <label>Return</label>
-        <div className="evidence__frame evidence__frame--return">
-          {screenshotUrl ? (
-            <img src={screenshotUrl} alt="Return inspection" />
-          ) : (
-            <span className="evidence__placeholder">Return photo</span>
-          )}
-        </div>
-      </div>
+      <EvidenceFrame label="Pickup" url={pickupUrl} variant="pickup" />
+      <EvidenceFrame label="Return" url={returnUrl} variant="return" />
     </div>
   );
 }
@@ -74,13 +101,14 @@ export function ExplanationPanel({ audit, selectedNodeId, onGeneratedPatch }: Pr
         <span className="panel__node">{selectedNodeId}</span>
       </header>
 
-      <EvidencePhotos screenshotUrl={audit.screenshot_url} />
+      <EvidencePhotos
+        pickupUrl={audit.pickup_screenshot_url}
+        returnUrl={audit.screenshot_url}
+      />
 
       {finding && (
         <section>
-          <span className="tag" style={{ color: CLASS_COLORS.design_violation.border }}>
-            ● Damage · {finding.severity}
-          </span>
+          {classificationTag(finding.classification, finding.severity)}
           <div className="kv">
             <div>
               <label>Pickup baseline</label>
@@ -95,7 +123,7 @@ export function ExplanationPanel({ audit, selectedNodeId, onGeneratedPatch }: Pr
           <p className="reasoning">{finding.reasoning}</p>
 
           <label>Cited standard</label>
-          <p className="reasoning">{STANDARD_CITATIONS.design_violation}</p>
+          <p className="reasoning">{STANDARD_CITATIONS[finding.classification]}</p>
 
           <label>Indicative cost</label>
           <p className="cost">€{SEVERITY_COST[finding.severity]}</p>
@@ -112,9 +140,7 @@ export function ExplanationPanel({ audit, selectedNodeId, onGeneratedPatch }: Pr
 
       {noise && (
         <section>
-          <span className="tag" style={{ color: CLASS_COLORS.technical_noise.border }}>
-            ● Normal wear — dismissed
-          </span>
+          {classificationTag("technical_noise")}
           <label>Reasoning</label>
           <p className="reasoning">{noise.reasoning}</p>
           <label>Cited standard</label>
@@ -126,9 +152,7 @@ export function ExplanationPanel({ audit, selectedNodeId, onGeneratedPatch }: Pr
 
       {evolution && (
         <section>
-          <span className="tag" style={{ color: CLASS_COLORS.intentional_evolution.border }}>
-            ● Agreed change — on file
-          </span>
+          {classificationTag("intentional_evolution")}
           <label>Reasoning</label>
           <p className="reasoning">{evolution.reasoning}</p>
           <label>Recorded at pickup</label>
@@ -142,9 +166,7 @@ export function ExplanationPanel({ audit, selectedNodeId, onGeneratedPatch }: Pr
 
       {!finding && !noise && !evolution && (
         <section>
-          <span className="tag" style={{ color: CLASS_COLORS.aligned.border }}>
-            ● No charge
-          </span>
+          {classificationTag("aligned")}
           <p className="reasoning">{STANDARD_CITATIONS.aligned}</p>
           <label>Indicative cost</label>
           <p className="cost cost--zero">€0</p>

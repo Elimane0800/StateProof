@@ -6,7 +6,7 @@ export const CLASS_COLORS: Record<Classification, { border: string; bg: string; 
   aligned: { border: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "No charge" },
   design_violation: { border: "#ef4444", bg: "rgba(239,68,68,0.14)", label: "Damage" },
   technical_noise: { border: "#6b7280", bg: "rgba(107,114,128,0.14)", label: "Normal wear" },
-  intentional_evolution: { border: "#f59e0b", bg: "rgba(245,158,11,0.14)", label: "Agreed change" },
+  intentional_evolution: { border: "#3b82f6", bg: "rgba(59,130,246,0.14)", label: "Agreed change" },
 };
 
 export function TreeNodeCard({ data, selected }: NodeProps<TreeNodeData>) {
