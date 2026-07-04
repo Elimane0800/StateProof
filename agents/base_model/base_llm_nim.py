@@ -195,6 +195,15 @@ class BaseLLMProvider:
 
 if __name__ == "__main__":
     import asyncio
+    import sys
+
+    # Windows consoles default to cp1252, which cannot encode the accented text
+    # and emoji used below; force UTF-8 so the self-test never crashes on Windows.
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
 
     print("=== ARIA LLM Provider — Test rapide ===\n")
 
