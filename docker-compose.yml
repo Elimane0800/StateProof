@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: stateproof
+      POSTGRES_PASSWORD: stateproof
+      POSTGRES_DB: stateproof
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stateproof -d stateproof"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      # psycopg v3 scheme (bare postgresql:// is auto-rewritten in code too).
+      DATABASE_URL: postgresql+psycopg://stateproof:stateproof@db:5432/stateproof
+      UPLOADS_DIR: /app/var/uploads
+      MAX_UPLOAD_MB: "200"
+      ALLOWED_VIDEO_EXT: ".mp4,.mov,.webm"
+    ports:
+      - "8000:8080"
+    volumes:
+      # Persist uploaded videos on the host so the AI track can read them.
+      - ./backend/var/uploads:/app/var/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

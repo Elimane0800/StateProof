@@ -16,10 +16,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api import audit, fix, report
+from app.api import audit, fix, rentals, report
 from app.core.config import get_settings
 from app.core.schema import AuditPayload
-from app.services import storage
+from app.services import registry_store, storage
 
 settings = get_settings()
 
@@ -40,10 +40,21 @@ app.add_middleware(
 app.include_router(audit.router)
 app.include_router(report.router)
 app.include_router(fix.router)
+app.include_router(rentals.router)
 
 # Serve CI-rendered screenshots referenced by screenshot_url.
 settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/artifacts", StaticFiles(directory=str(settings.artifacts_dir)), name="artifacts")
+
+# Serve uploaded rental videos (video_in_url / video_out_url map here).
+settings.uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(settings.uploads_dir)), name="uploads")
+
+
+@app.on_event("startup")
+def _init_registry() -> None:
+    """Create the rental registry tables if they do not exist yet."""
+    registry_store.init_db()
 
 
 @app.on_event("startup")

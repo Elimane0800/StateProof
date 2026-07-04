@@ -17,6 +17,22 @@ def _get_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _normalize_db_url(url: str) -> str:
+    """Force Postgres URLs onto the psycopg v3 driver.
+
+    SQLAlchemy defaults a bare ``postgresql://`` (and ``postgresql+psycopg2://``)
+    to psycopg2, which we avoid on Windows. Rewriting the scheme to
+    ``postgresql+psycopg://`` selects psycopg v3 regardless of the env value.
+    """
+    if url.startswith("postgresql+psycopg2://"):
+        return "postgresql+psycopg://" + url[len("postgresql+psycopg2://") :]
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url[len("postgresql://") :]
+    if url.startswith("postgres://"):  # some providers emit this legacy scheme
+        return "postgresql+psycopg://" + url[len("postgres://") :]
+    return url
+
+
 class Settings:
     """Environment-driven settings. Instantiated once via get_settings()."""
 
@@ -37,6 +53,22 @@ class Settings:
             os.getenv("ARTIFACTS_DIR", str(BACKEND_ROOT / "var" / "artifacts"))
         )
         self.mock_path: Path = BACKEND_ROOT / "mocks" / "audit_mock.json"
+
+        # Rental registry: SQL database + uploaded videos.
+        # DATABASE_URL unset -> local SQLite file (zero external setup). A bare
+        # postgresql:// value is normalized to the psycopg v3 driver below.
+        self.database_url: str = _normalize_db_url(
+            os.getenv("DATABASE_URL", f"sqlite:///{(BACKEND_ROOT / 'var' / 'registry.db')}")
+        )
+        self.uploads_dir: Path = Path(
+            os.getenv("UPLOADS_DIR", str(BACKEND_ROOT / "var" / "uploads"))
+        )
+        self.max_upload_mb: int = int(os.getenv("MAX_UPLOAD_MB", "200"))
+        self.allowed_video_ext: set[str] = {
+            ext if ext.startswith(".") else f".{ext}"
+            for ext in os.getenv("ALLOWED_VIDEO_EXT", ".mp4,.mov,.webm").split(",")
+            if ext.strip()
+        }
 
         # The public base URL of the Studio, used to build report links in comments.
         self.studio_base_url: str = os.getenv("STUDIO_BASE_URL", "http://localhost:5173")
