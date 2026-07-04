@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+*.pdf
+.DS_Store
+
+# Fichiers de sortie générés par les scripts de test (racine du repo)
+/edges.json
+/nodes.json
+
+# Photos et images générées (locales, jamais committées) — les README.md
+# et .gitkeep dans data/ restent trackés pour documenter la convention.
+data/**/*.jpg
+data/**/*.jpeg
+data/**/*.png
+data/**/*.webp
