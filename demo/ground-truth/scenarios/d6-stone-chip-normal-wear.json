@@ -1,0 +1,16 @@
+{
+  "scenario": "D6",
+  "title": "Stone-chip dust → normal_wear",
+  "classification_alias": "normal_wear",
+  "schema_classification": "technical_noise",
+  "node_id": "front_bumper",
+  "plate": "AB-123-CD",
+  "pickup_photo": "demo/ground-truth/photos/pickup/02-front.png",
+  "return_photo": "demo/ground-truth/photos/return/02-front.png",
+  "noise_item": {
+    "element": "front_bumper — stone chip dust",
+    "node_id": "front_bumper",
+    "reasoning": "Fine stone-chip speckling on the front bumper matches pickup baseline. Chip diameter under 3 mm and count within BVRLA acceptable limits for rental mileage — classified as normal wear, not new damage."
+  },
+  "indicative_cost_eur": 0
+}

@@ -1,0 +1,8 @@
+{
+  "plate": "AB-123-CD",
+  "baseline_file": "pickup-baseline.json",
+  "return_audit_file": "return-audit.json",
+  "audits": ["return-audit.json"],
+  "hero_node_id": "door_fl",
+  "notes": "Live demo registry — scratch logged at pickup, unchanged at return → not chargeable."
+}

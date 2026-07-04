@@ -1,0 +1,78 @@
+{
+  "asset_id": "AB-123-CD",
+  "contract_event": "pickup",
+  "pickup_screenshot_url": "demo/ground-truth/photos/pickup/02-front.png",
+  "design_tree": {
+    "id": "vehicle",
+    "label": "Vehicle",
+    "type": "body",
+    "classification": "aligned",
+    "props": { "make": "VW", "model": "Golf", "colour": "silver", "plate": "AB-123-CD" },
+    "children": [
+      {
+        "id": "front_bumper",
+        "label": "Front Bumper",
+        "type": "panel",
+        "classification": "aligned",
+        "props": { "condition": "light stone chips — within BVRLA limit" },
+        "children": []
+      },
+      {
+        "id": "hood",
+        "label": "Hood",
+        "type": "panel",
+        "classification": "aligned",
+        "props": { "condition": "no marks" },
+        "children": []
+      },
+      {
+        "id": "windshield",
+        "label": "Windshield",
+        "type": "glass",
+        "classification": "aligned",
+        "props": { "condition": "clear" },
+        "children": []
+      },
+      {
+        "id": "door_fl",
+        "label": "Door FL",
+        "type": "panel",
+        "classification": "intentional_evolution",
+        "props": {
+          "registered_scratch": "15 cm horizontal, mid-panel",
+          "logged_at": "pickup",
+          "photo": "demo/ground-truth/photos/pickup/03-door-fl-scratch.png"
+        },
+        "children": []
+      },
+      {
+        "id": "door_fr",
+        "label": "Door FR",
+        "type": "panel",
+        "classification": "aligned",
+        "props": { "condition": "no damage recorded" },
+        "children": []
+      },
+      {
+        "id": "wheel_fl",
+        "label": "Wheel FL",
+        "type": "wheel",
+        "classification": "aligned",
+        "props": { "condition": "curb rash within standard" },
+        "children": []
+      },
+      {
+        "id": "rear",
+        "label": "Rear",
+        "type": "panel",
+        "classification": "intentional_evolution",
+        "props": {
+          "agreed_change": "roof box — Thule Motion XT",
+          "addendum_signed": true,
+          "photo": "demo/ground-truth/photos/pickup/05-rear.png"
+        },
+        "children": []
+      }
+    ]
+  }
+}

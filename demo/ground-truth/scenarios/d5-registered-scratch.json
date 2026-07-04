@@ -1,0 +1,16 @@
+{
+  "scenario": "D5",
+  "title": "Registered scratch → not chargeable",
+  "classification_alias": "not_chargeable",
+  "schema_classification": "technical_noise",
+  "node_id": "door_fl",
+  "plate": "AB-123-CD",
+  "pickup_photo": "demo/ground-truth/photos/pickup/03-door-fl-scratch.png",
+  "return_photo": "demo/ground-truth/photos/return/03-door-fl-scratch.png",
+  "noise_item": {
+    "element": "door_fl — registered scratch",
+    "node_id": "door_fl",
+    "reasoning": "THE REGISTRY MOMENT: A 15 cm horizontal scratch on the front-left door was photographed and logged at pickup. Return photos show the identical mark with no extension or deepening. BVRLA Fair Wear Standard — pre-existing surface marks registered at handover are not chargeable."
+  },
+  "indicative_cost_eur": 0
+}

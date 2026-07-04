@@ -1,0 +1,21 @@
+{
+  "scenario": "D4",
+  "title": "New dent → damage",
+  "classification_alias": "damage",
+  "schema_classification": "design_violation",
+  "node_id": "door_fr",
+  "plate": "AB-123-CD",
+  "pickup_photo": "demo/ground-truth/photos/pickup/04-door-fr.png",
+  "return_photo": "demo/ground-truth/photos/return/04-door-fr-dent.png",
+  "finding": {
+    "type": "new_damage",
+    "classification": "design_violation",
+    "severity": "medium",
+    "location": "door_fr — lower edge",
+    "node_id": "door_fr",
+    "expected": "No panel deformation (pickup baseline)",
+    "actual": "40 mm crease with paint fracture — not present at pickup",
+    "reasoning": "Return inspection shows a fresh dent on the front-right door absent from pickup photos and registry. RCAR Fair Wear & Tear Guide §4.2 — chargeable new damage.",
+    "indicative_cost_eur": 120
+  }
+}
