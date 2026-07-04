@@ -1,0 +1,131 @@
+{
+  "audit_id": "pr-1-run-1",
+  "pr_number": 1,
+  "drift_score": 72,
+  "screenshot_url": "/artifacts/pr-1-run-1.png",
+  "design_tree": {
+    "id": "card",
+    "label": "StatusCard",
+    "type": "container",
+    "classification": "aligned",
+    "props": { "variant": "danger", "radius": "radius-md", "padding": "spacing-md" },
+    "children": [
+      {
+        "id": "icon",
+        "label": "Icon",
+        "type": "icon",
+        "classification": "aligned",
+        "props": { "color": "color-danger" },
+        "children": []
+      },
+      {
+        "id": "content",
+        "label": "Content",
+        "type": "container",
+        "classification": "aligned",
+        "props": { "gap": "spacing-sm" },
+        "children": [
+          {
+            "id": "title",
+            "label": "Title",
+            "type": "text",
+            "classification": "aligned",
+            "props": { "font": "font-heading", "color": "color-text" },
+            "children": []
+          },
+          {
+            "id": "description",
+            "label": "Description",
+            "type": "text",
+            "classification": "aligned",
+            "props": { "font": "font-body", "color": "color-text" },
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "btn-primary",
+        "label": "Action Button",
+        "type": "button",
+        "classification": "aligned",
+        "props": { "background": "color-danger", "radius": "radius-md", "padding": "spacing-md" },
+        "children": []
+      }
+    ]
+  },
+  "code_tree": {
+    "id": "card",
+    "label": "StatusCard",
+    "type": "container",
+    "classification": "aligned",
+    "props": { "variant": "danger", "radius": "radius-md", "padding": "spacing-md" },
+    "children": [
+      {
+        "id": "icon",
+        "label": "Icon",
+        "type": "icon",
+        "classification": "aligned",
+        "props": { "color": "color-danger" },
+        "children": []
+      },
+      {
+        "id": "content",
+        "label": "Content",
+        "type": "container",
+        "classification": "aligned",
+        "props": { "gap": "spacing-sm" },
+        "children": [
+          {
+            "id": "title",
+            "label": "Title",
+            "type": "text",
+            "classification": "aligned",
+            "props": { "font": "font-heading", "color": "color-text" },
+            "children": []
+          },
+          {
+            "id": "description",
+            "label": "Description",
+            "type": "text",
+            "classification": "aligned",
+            "props": { "font": "font-body", "color": "color-text" },
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "btn-primary",
+        "label": "Action Button",
+        "type": "button",
+        "classification": "design_violation",
+        "props": { "background": "#ef4444", "radius": "radius-md", "padding": "spacing-md" },
+        "children": []
+      }
+    ]
+  },
+  "findings": [
+    {
+      "type": "token_violation",
+      "classification": "design_violation",
+      "severity": "high",
+      "location": "StatusCard.tsx:14",
+      "node_id": "btn-primary",
+      "bbox": [120, 48, 340, 92],
+      "expected": "var(--color-danger)",
+      "actual": "#ef4444",
+      "reasoning": "Hex value matches token color-danger exactly; hardcoding breaks theme propagation.",
+      "cursor_patch": {
+        "prompt": "Replace the hardcoded #ef4444 on line 14 with var(--color-danger) from our design tokens.",
+        "diff": "- color: #ef4444;\n+ color: var(--color-danger);"
+      }
+    }
+  ],
+  "ignored_as_noise": [
+    {
+      "element": "div.scroll-wrapper",
+      "node_id": null,
+      "reasoning": "Structural wrapper required for overflow handling; no visual or semantic impact."
+    }
+  ],
+  "evolution_proposals": []
+}

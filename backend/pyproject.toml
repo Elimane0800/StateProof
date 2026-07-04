@@ -1,0 +1,29 @@
+[project]
+name = "synchronaise-backend"
+version = "0.1.0"
+description = "SynchronAIse audit service - CI/CD-native design auditor backend (audit + Taste Engine)."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2",
+    "python-multipart",
+    "httpx",
+    "jsonschema",
+    # VLM providers (optional at runtime; MOCK_MODE works without them)
+    "google-generativeai",
+    "openai",
+]
+
+[dependency-groups]
+# Installed by `uv sync` by default; skipped with `uv sync --no-dev`.
+dev = [
+    "pytest",
+]
+
+[tool.uv]
+# This is an application, not a distributable package - don't try to build it.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

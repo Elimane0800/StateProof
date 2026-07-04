@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://synchronaise.dev/schema/audit.json",
+  "title": "SynchronAIse Audit Payload",
+  "description": "The frozen JSON contract. One payload drives the PR comment, the Graph Reconciliation Studio, and the metrics script.",
+  "type": "object",
+  "required": [
+    "audit_id",
+    "pr_number",
+    "drift_score",
+    "screenshot_url",
+    "design_tree",
+    "code_tree",
+    "findings",
+    "ignored_as_noise",
+    "evolution_proposals"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "audit_id": {
+      "type": "string",
+      "description": "Stable id, e.g. pr-6-run-3. Used as the storage key and the Studio route."
+    },
+    "pr_number": { "type": "integer", "minimum": 0 },
+    "drift_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "0 = fully aligned (green), higher = more drift."
+    },
+    "screenshot_url": { "type": "string" },
+    "design_tree": { "$ref": "#/definitions/treeNode" },
+    "code_tree": { "$ref": "#/definitions/treeNode" },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/finding" }
+    },
+    "ignored_as_noise": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/noiseItem" }
+    },
+    "evolution_proposals": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/evolutionProposal" }
+    }
+  },
+  "definitions": {
+    "classification": {
+      "type": "string",
+      "enum": ["aligned", "design_violation", "technical_noise", "intentional_evolution"]
+    },
+    "treeNode": {
+      "type": "object",
+      "required": ["id", "label", "type", "classification", "children"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "description": "Stable node id shared between design_tree and code_tree." },
+        "label": { "type": "string" },
+        "type": {
+          "type": "string",
+          "description": "Semantic node kind, e.g. container, text, button, icon."
+        },
+        "classification": { "$ref": "#/definitions/classification" },
+        "props": { "type": "object", "additionalProperties": true },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/treeNode" }
+        }
+      }
+    },
+    "cursorPatch": {
+      "type": "object",
+      "required": ["prompt", "diff"],
+      "additionalProperties": false,
+      "properties": {
+        "prompt": { "type": "string", "description": "Paste-ready Cursor prompt." },
+        "diff": { "type": "string", "description": "Suggested unified diff, rendered as a GitHub suggestion block." }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "type",
+        "classification",
+        "severity",
+        "location",
+        "node_id",
+        "expected",
+        "actual",
+        "reasoning",
+        "cursor_patch"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "e.g. token_violation, spacing_violation, structural_violation."
+        },
+        "classification": { "$ref": "#/definitions/classification" },
+        "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+        "location": { "type": "string", "description": "file:line" },
+        "node_id": { "type": "string", "description": "Links the finding to a node in the trees; drives coloring." },
+        "bbox": {
+          "type": ["array", "null"],
+          "items": { "type": "number" },
+          "minItems": 4,
+          "maxItems": 4,
+          "description": "[x0, y0, x1, y1] drift zone on the screenshot. Fallback annotation."
+        },
+        "expected": { "type": "string" },
+        "actual": { "type": "string" },
+        "reasoning": { "type": "string" },
+        "cursor_patch": { "$ref": "#/definitions/cursorPatch" }
+      }
+    },
+    "noiseItem": {
+      "type": "object",
+      "required": ["element", "reasoning"],
+      "additionalProperties": false,
+      "properties": {
+        "element": { "type": "string" },
+        "node_id": { "type": ["string", "null"] },
+        "reasoning": { "type": "string" }
+      }
+    },
+    "evolutionProposal": {
+      "type": "object",
+      "required": ["element", "node_id", "reasoning", "proposal"],
+      "additionalProperties": false,
+      "properties": {
+        "element": { "type": "string" },
+        "node_id": { "type": ["string", "null"] },
+        "reasoning": { "type": "string" },
+        "proposal": { "type": "string", "description": "Reconciliation suggestion, not a rollback." }
+      }
+    }
+  }
+}
