@@ -61,3 +61,10 @@ twice. The VLM reads the plate straight off the photo and auto-links the audit.
 
 See [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md) for the 4-hour team build plan and task
 assignments.
+
+## Moteur source (engine)
+
+Le code Python à la racine de cette branche (`agents/`, `scripts/`, `config/`) est le
+**moteur d'origine** (pipeline agentique A/B/C/D, `bbox_pct`, détection multi-entités,
+annotation par différence de pixels) à porter/adapter dans `backend/` selon le plan
+ci-dessus. Détails complets : [ENGINE_README.md](ENGINE_README.md).

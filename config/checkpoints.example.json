@@ -1,0 +1,17 @@
+{
+  "property_id": "appt-12",
+  "rooms": {
+    "salon": {
+      "checkpoints": ["mur_nord", "mur_sud", "sol", "prise_electrique"]
+    },
+    "chambre": {
+      "checkpoints": ["mur_nord", "mur_sud", "sol", "fenetre"]
+    },
+    "cuisine": {
+      "checkpoints": ["mur_evier", "sol_carrelage", "robinet", "porte_placard"]
+    },
+    "salle_de_bain": {
+      "checkpoints": ["mur_douche", "sol_carrelage", "wc", "robinet"]
+    }
+  }
+}
