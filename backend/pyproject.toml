@@ -10,6 +10,9 @@ dependencies = [
     "python-multipart",
     "httpx",
     "jsonschema",
+    # Registry persistence (Postgres via psycopg v3, SQLite fallback)
+    "sqlmodel",
+    "psycopg[binary]",
     # VLM providers (optional at runtime; MOCK_MODE works without them)
     "google-generativeai",
     "openai",
