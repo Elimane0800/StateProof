@@ -1,0 +1,17 @@
+{
+  "scenario": "D7",
+  "title": "Approved roof box → agreed_change",
+  "classification_alias": "agreed_change",
+  "schema_classification": "intentional_evolution",
+  "node_id": "rear",
+  "plate": "AB-123-CD",
+  "pickup_photo": "demo/ground-truth/photos/pickup/05-rear.png",
+  "return_photo": "demo/ground-truth/photos/return/05-rear.png",
+  "evolution_proposal": {
+    "element": "roof box — Thule Motion XT",
+    "node_id": "rear",
+    "reasoning": "Renter declared roof box fitted at pickup; addendum signed and photographed. Return shows same unit fitted — agreed change, not damage.",
+    "proposal": "Roof box (Thule Motion XT) recorded on rental addendum at pickup — €0 charge on return."
+  },
+  "indicative_cost_eur": 0
+}
