@@ -74,7 +74,9 @@ class AuditPayload(BaseModel):
 
     audit_id: str
     pr_number: int
-    drift_score: int = Field(ge=0, le=100)
+    asset_id: Optional[str] = Field(default=None, description="License plate / asset key.")
+    drift_score: int = Field(ge=0, le=999)
+    pickup_screenshot_url: Optional[str] = None
     screenshot_url: str
     design_tree: TreeNode
     code_tree: TreeNode
@@ -96,6 +98,17 @@ class AuditRequest(BaseModel):
     )
     tokens: dict[str, Any] = Field(
         default_factory=dict, description="The design tokens the code should honor."
+    )
+
+
+class ReturnInspectionRequest(BaseModel):
+    """StateProof return inspection: plate + return media → audit payload."""
+
+    asset_id: str = Field(..., description="License plate, e.g. AB-123-CD")
+    audit_id: Optional[str] = Field(default=None, description="Existing audit id to update.")
+    screenshot_url: Optional[str] = None
+    screenshot_b64: Optional[str] = Field(
+        default=None, description="Base64-encoded return photo or video frame."
     )
 
 

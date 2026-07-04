@@ -11,20 +11,17 @@ from hour one.
 
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter
 
 from app.core.config import get_settings
 from app.core.schema import AuditPayload, AuditRequest
-from app.services import classifier, storage, tree_builder
+from app.services import classifier, demo_loader, storage, tree_builder
 
 router = APIRouter(tags=["audit"])
 
 
 def _mock_for(request: AuditRequest) -> AuditPayload:
-    data = json.loads(get_settings().mock_path.read_text(encoding="utf-8"))
-    payload = AuditPayload.model_validate(data)
+    payload = demo_loader.resolve_mock_payload()
     payload.pr_number = request.pr_number
     payload.audit_id = f"pr-{request.pr_number}-run-{request.run}"
     return payload

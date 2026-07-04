@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter, HTTPException
 
 from app.core.config import get_settings
 from app.core.schema import AuditPayload
-from app.services import storage
+from app.services import demo_loader, storage
 
 router = APIRouter(tags=["report"])
 
 
 def _mock() -> AuditPayload:
-    data = json.loads(get_settings().mock_path.read_text(encoding="utf-8"))
-    return AuditPayload.model_validate(data)
+    return demo_loader.resolve_mock_payload()
 
 
 @router.get("/report/{audit_id}", response_model=AuditPayload)

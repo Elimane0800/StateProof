@@ -37,6 +37,10 @@ class Settings:
             os.getenv("ARTIFACTS_DIR", str(BACKEND_ROOT / "var" / "artifacts"))
         )
         self.mock_path: Path = BACKEND_ROOT / "mocks" / "audit_mock.json"
+        self.ground_truth_dir: Path = Path(
+            os.getenv("GROUND_TRUTH_DIR", str(REPO_ROOT / "demo" / "ground-truth"))
+        )
+        self.default_plate: str = os.getenv("DEFAULT_PLATE", "AB-123-CD")
 
         # The public base URL of the Studio, used to build report links in comments.
         self.studio_base_url: str = os.getenv("STUDIO_BASE_URL", "http://localhost:5173")

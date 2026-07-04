@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { getReport } from "../api/client";
+import { getReport, runReturnInspection } from "../api/client";
 import type { AuditPayload, CursorPatch } from "../types/contract";
-import { mockDetectComponents } from "../lib/detection";
 import { DriftScore } from "./DriftScore";
 import { GraphView } from "./GraphView";
 import { ExplanationPanel } from "./ExplanationPanel";
@@ -18,18 +17,18 @@ export function Studio({ auditId }: Props) {
   const [returnMedia, setReturnMedia] = useState<ReturnMedia | null>(null);
   const [detectedComponentIds, setDetectedComponentIds] = useState<Set<string> | null>(null);
 
+  const selectRegistryHero = (payload: AuditPayload) =>
+    payload.ignored_as_noise.find((n) => n.node_id === "door_fl")?.node_id ??
+    payload.ignored_as_noise.find((n) => n.reasoning.toLowerCase().includes("registry"))?.node_id ??
+    payload.findings[0]?.node_id ??
+    null;
+
   useEffect(() => {
     let alive = true;
     getReport(auditId).then((payload) => {
       if (!alive) return;
       setAudit(payload);
-      const registryHero =
-        payload.ignored_as_noise.find((n) => n.node_id === "door_fl")?.node_id ??
-        payload.ignored_as_noise.find((n) =>
-          n.reasoning.toLowerCase().includes("registry")
-        )?.node_id ??
-        null;
-      setSelectedNodeId(registryHero ?? payload.findings[0]?.node_id ?? null);
+      setSelectedNodeId(selectRegistryHero(payload));
     });
     return () => {
       alive = false;
@@ -44,7 +43,7 @@ export function Studio({ auditId }: Props) {
     };
   }, [returnMedia]);
 
-  const handleReturnUpload = (file: File, url: string) => {
+  const handleReturnUpload = async (file: File, url: string) => {
     if (!audit) return;
     if (returnMedia?.url.startsWith("blob:")) {
       URL.revokeObjectURL(returnMedia.url);
@@ -54,7 +53,16 @@ export function Studio({ auditId }: Props) {
       type: file.type.startsWith("video/") ? "video" : "image",
       name: file.name,
     });
-    setDetectedComponentIds(mockDetectComponents(audit));
+    const plate = audit.asset_id ?? "AB-123-CD";
+    const { audit: nextAudit, detected } = await runReturnInspection(
+      plate,
+      file,
+      audit.audit_id,
+      audit
+    );
+    setAudit(nextAudit);
+    setDetectedComponentIds(detected);
+    setSelectedNodeId(selectRegistryHero(nextAudit));
   };
 
   const handleReturnClear = () => {

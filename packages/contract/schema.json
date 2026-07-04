@@ -22,11 +22,19 @@
       "description": "Stable id, e.g. pr-6-run-3. Used as the storage key and the Studio route."
     },
     "pr_number": { "type": "integer", "minimum": 0 },
+    "asset_id": {
+      "type": "string",
+      "description": "License plate / asset key (StateProof)."
+    },
     "drift_score": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 100,
-      "description": "0 = fully aligned (green), higher = more drift."
+      "maximum": 999,
+      "description": "Damage charge total in euros (StateProof) or drift index."
+    },
+    "pickup_screenshot_url": {
+      "type": "string",
+      "description": "Pickup baseline photo URL (StateProof)."
     },
     "screenshot_url": { "type": "string" },
     "design_tree": { "$ref": "#/definitions/treeNode" },

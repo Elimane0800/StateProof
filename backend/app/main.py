@@ -9,17 +9,14 @@ Routes:
 
 from __future__ import annotations
 
-import json
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api import audit, fix, report
-from app.core.config import get_settings
-from app.core.schema import AuditPayload
-from app.services import storage
+from app.api import audit, fix, inspection, report
+from app.core.config import get_settings, REPO_ROOT
+from app.services import demo_loader, storage
 
 settings = get_settings()
 
@@ -38,6 +35,7 @@ app.add_middleware(
 )
 
 app.include_router(audit.router)
+app.include_router(inspection.router)
 app.include_router(report.router)
 app.include_router(fix.router)
 
@@ -45,14 +43,19 @@ app.include_router(fix.router)
 settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/artifacts", StaticFiles(directory=str(settings.artifacts_dir)), name="artifacts")
 
+# Serve demo ground-truth photos when feat/demo is present.
+_ground_truth = REPO_ROOT / "demo" / "ground-truth"
+if _ground_truth.is_dir():
+    app.mount("/demo", StaticFiles(directory=str(_ground_truth)), name="demo")
+
 
 @app.on_event("startup")
 def _seed_mock() -> None:
     """Seed the demo audit so /report is never empty during development."""
-    if not settings.mock_path.exists():
+    try:
+        payload = demo_loader.resolve_mock_payload()
+    except Exception:
         return
-    data = json.loads(settings.mock_path.read_text(encoding="utf-8"))
-    payload = AuditPayload.model_validate(data)
     if storage.load(payload.audit_id) is None:
         storage.save(payload)
 
