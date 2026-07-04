@@ -1,4 +1,4 @@
-# Dependencies
+﻿# Dependencies
 node_modules/
 **/node_modules/
 
@@ -23,11 +23,22 @@ venv/
 backend/.env
 mcp.json
 .cursor/mcp.json
+*.pdf
 
 # Runtime data / artifacts
 backend/var/
 **/.synchronaise/
 *.log
+
+# Fichiers de sortie generes par les scripts de test (racine du repo)
+/edges.json
+/nodes.json
+
+# Photos et images generees (locales) — README.md and .gitkeep in data/ stay tracked
+data/**/*.jpg
+data/**/*.jpeg
+data/**/*.png
+data/**/*.webp
 
 # OS / editor
 .DS_Store

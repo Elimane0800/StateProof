@@ -1,0 +1,9 @@
+{
+  "_comment": "Grille de vétusté FACULTATIVE (décret n°2016-382 du 30/03/2016). Ne s'applique que si elle a été annexée au bail et acceptée par les deux parties. duree_vie_ans / franchise_ans en années, taux_annuel = abattement par an au-delà de la franchise.",
+  "mur": { "duree_vie_ans": 10, "franchise_ans": 1, "taux_annuel": 0.10 },
+  "sol": { "duree_vie_ans": 10, "franchise_ans": 2, "taux_annuel": 0.10 },
+  "prise_electrique": { "duree_vie_ans": 15, "franchise_ans": 0, "taux_annuel": 0.0667 },
+  "porte": { "duree_vie_ans": 20, "franchise_ans": 2, "taux_annuel": 0.05 },
+  "robinetterie": { "duree_vie_ans": 10, "franchise_ans": 1, "taux_annuel": 0.10 },
+  "sanitaire": { "duree_vie_ans": 15, "franchise_ans": 2, "taux_annuel": 0.0667 }
+}

@@ -1,0 +1,22 @@
+{
+  "property_id": "vehicule-test",
+  "rooms": {
+    "exterieur": {
+      "checkpoints": [
+        {"id": "pare_choc_avant", "element_type": "pare_choc"},
+        {"id": "portiere_avant_gauche", "element_type": "portiere"},
+        {"id": "aile_avant_droite", "element_type": "aile"},
+        {"id": "jante_avant_gauche", "element_type": "jante"},
+        {"id": "pare_brise", "element_type": "pare_brise"}
+      ]
+    },
+    "interieur": {
+      "checkpoints": [
+        {"id": "siege_conducteur", "element_type": "siege"},
+        {"id": "volant", "element_type": "volant"},
+        {"id": "tableau_de_bord", "element_type": "tableau_de_bord"},
+        {"id": "plancher_conducteur", "element_type": "plancher"}
+      ]
+    }
+  }
+}
