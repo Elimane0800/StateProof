@@ -2,11 +2,15 @@ import { useState } from "react";
 import type { AuditPayload, CursorPatch, Classification, Severity } from "../types/contract";
 import { CLASS_COLORS } from "./TreeNode";
 import { PromptBox } from "./PromptBox";
+import { ReturnMediaUpload, type ReturnMedia } from "./ReturnMediaUpload";
 
 interface Props {
   audit: AuditPayload;
   selectedNodeId: string | null;
   onGeneratedPatch: (patch: CursorPatch) => void;
+  returnMedia: ReturnMedia | null;
+  onReturnUpload: (file: File, url: string) => void;
+  onReturnClear: () => void;
 }
 
 const SEVERITY_COST: Record<Severity, number> = {
@@ -70,16 +74,42 @@ function EvidenceFrame({ label, url, variant }: { label: string; url?: string; v
   );
 }
 
-function EvidencePhotos({ pickupUrl, returnUrl }: { pickupUrl?: string; returnUrl: string }) {
+function EvidencePhotos({
+  pickupUrl,
+  returnUrl,
+  returnMedia,
+}: {
+  pickupUrl?: string;
+  returnUrl: string;
+  returnMedia: ReturnMedia | null;
+}) {
+  const effectiveReturnUrl = returnMedia?.type === "image" ? returnMedia.url : returnUrl;
+
   return (
     <div className="evidence">
       <EvidenceFrame label="Pickup" url={pickupUrl} variant="pickup" />
-      <EvidenceFrame label="Return" url={returnUrl} variant="return" />
+      {returnMedia?.type === "video" ? (
+        <div className="evidence__photo">
+          <label>Return video</label>
+          <div className="evidence__frame evidence__frame--return">
+            <video src={returnMedia.url} controls className="evidence__video" />
+          </div>
+        </div>
+      ) : (
+        <EvidenceFrame label="Return photo" url={effectiveReturnUrl} variant="return" />
+      )}
     </div>
   );
 }
 
-export function ExplanationPanel({ audit, selectedNodeId, onGeneratedPatch }: Props) {
+export function ExplanationPanel({
+  audit,
+  selectedNodeId,
+  onGeneratedPatch,
+  returnMedia,
+  onReturnUpload,
+  onReturnClear,
+}: Props) {
   const finding = audit.findings.find((f) => f.node_id === selectedNodeId) || null;
   const noise = audit.ignored_as_noise.find((n) => n.node_id === selectedNodeId) || null;
   const evolution = audit.evolution_proposals.find((e) => e.node_id === selectedNodeId) || null;
@@ -87,9 +117,14 @@ export function ExplanationPanel({ audit, selectedNodeId, onGeneratedPatch }: Pr
   if (!selectedNodeId) {
     return (
       <aside className="panel">
+        <ReturnMediaUpload
+          media={returnMedia}
+          onUpload={onReturnUpload}
+          onClear={onReturnClear}
+        />
         <div className="panel__empty">
           <h3>Select a body part</h3>
-          <p>Tap any element in the Pickup vs Return graph to see photo evidence, reasoning, and charge details.</p>
+          <p>Upload return media to detect visible components, then tap any element in the graph for evidence and charge details.</p>
         </div>
       </aside>
     );
@@ -97,6 +132,11 @@ export function ExplanationPanel({ audit, selectedNodeId, onGeneratedPatch }: Pr
 
   return (
     <aside className="panel">
+      <ReturnMediaUpload
+        media={returnMedia}
+        onUpload={onReturnUpload}
+        onClear={onReturnClear}
+      />
       <header className="panel__head">
         <span className="panel__node">{selectedNodeId}</span>
       </header>
@@ -104,6 +144,7 @@ export function ExplanationPanel({ audit, selectedNodeId, onGeneratedPatch }: Pr
       <EvidencePhotos
         pickupUrl={audit.pickup_screenshot_url}
         returnUrl={audit.screenshot_url}
+        returnMedia={returnMedia}
       />
 
       {finding && (
