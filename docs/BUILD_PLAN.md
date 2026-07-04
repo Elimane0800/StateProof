@@ -1,218 +1,266 @@
-# StateProof — 4-Hour Team Build Plan
+# StateProof — 4-Hour Build Plan
 
-> 5 parallel workstreams. The engine already exists in the SynchronAIse repo
-> (`C:\Users\salam\Projects\SynchronAIse`) — we port it, re-skin it, and point it at
-> cars. Hard rule: **feature freeze at T+3:00**, everything after that is integration,
-> seeding, and dry runs. If something isn't working at freeze, it ships in MOCK_MODE.
+> Engine source: `C:\Users\salam\Projects\SynchronAIse` — port, re-skin, point at cars.
+> **Feature freeze T+3:00.** Not green by then → ship in MOCK_MODE.
+> Pitch + rehearsal → **tomorrow morning** (not during this build).
 
-## T+0:00 – T+0:30 — Bootstrap (everyone together)
+---
 
-- **Integrator** ports from SynchronAIse into this repo: `packages/contract/`,
-  `backend/`, `frontend/` (skip `action/` — the GitHub Action is irrelevant here).
-  Commit as-is, get MOCK_MODE running end-to-end (old UI demo) so every lane starts
-  from a green base. Everyone pulls.
-- Everyone else: env setup (Python + `uv`, Node, API keys in `backend/.env` —
-  `NVIDIA_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`; any one is enough, MOCK_MODE
-  covers zero), read this plan, claim your lane.
+## Structure
 
-## The five lanes
+Five people, **four tracks**. Backend is split into two owners so API work and AI/schema
+work never block each other.
 
-### Lane 1 — Contract & Taxonomy Lead
+```
+StateProof/
+├── packages/contract/     ← Backend — AI (schema source)
+├── backend/               ← Backend — AI + Backend — API
+├── frontend/src/          ← Frontend track
+├── demo/ground-truth/     ← Demo + deploy track
+├── deploy/                ← Demo + deploy (k3s stretch, T+3:00 only)
+└── main                   ← Integration track merges here
+```
 
-**Owns:** the shared schema everyone else depends on. **Deliver the schema by T+1:00 —
-you are the critical path.**
+| Person | Track | Branch |
+|--------|-------|--------|
+| _assign_ | **Integration** | `feat/integration` |
+| _assign_ | **Backend — AI & schema** | `feat/backend-ai` |
+| _assign_ | **Backend — API & registry** | `feat/backend-api` |
+| _assign_ | **Frontend** | `feat/frontend` |
+| _assign_ | **Demo + deploy** | `feat/demo` / `feat/deploy-k3s` |
 
-- `backend/app/core/schema.py` + `frontend/src/types/contract.ts`: fixed car element
-  types (`front_bumper`, `hood`, `windshield`, `door_fl/fr/rl/rr`, `wheel_fl/fr/rl/rr`,
-  `rear`), props `condition`, `defects[]` (type, location, size); every audit carries
-  `asset_id` (plate) + `contract_event` (`pickup` / `return`)
-- Classification aliases: `damage` / `normal_wear` / `agreed_change` (semantics of
-  violation / noise / evolution unchanged)
-- Then (by T+2:00): rewrite `classification.md` — damage vs fair-wear taxonomy with
-  rental-industry standards (scratch-length thresholds, chip counts), required
-  standard citation + indicative cost per finding — and update the heuristic fallback
-  in `classifier.py` to match, so MOCK_MODE stays coherent.
+**Coordination rule:** schema frozen on `main` by **T+1:00**. If it changes, all five
+people must know immediately.
 
-### Lane 2 — Backend Lead
+---
 
-**Owns:** parsers + registry. Mock path working by T+2:00, live VLM by T+3:00.
+## T+0:00 – T+0:30 — Bootstrap (everyone)
 
-- `figma_parser.py` → `baseline_parser.py`, `code_parser.py` → `return_parser.py`:
-  send photos + the fixed checklist schema to the VLM (`vlm.py`), get back a filled
-  condition graph **plus any visible license plate**; mock path loads authored JSONs
-- Thin Asset Registry in `storage.py`: in-memory assets keyed by plate holding
-  `{ baseline, audits[] }`; `POST /audit` without an explicit `asset_id` auto-links
-  via the recognized plate and diffs against the registered baseline
-- **NVIDIA NIM as first provider** (~20 min, do it while inside `vlm.py`): NIM speaks
-  the OpenAI-compatible API, so add `NVIDIA_API_KEY` + `NVIDIA_MODEL` to `config.py`
-  and register a provider constructed as
-  `OpenAI(base_url="https://integrate.api.nvidia.com/v1", api_key=settings.nvidia_api_key)`
-  with a NIM vision model. Chain becomes **NIM → Gemini → OpenAI → heuristic** — if NIM
-  fails we degrade exactly as before, so this cannot hurt reliability
-- Cut: `GET /assets` timeline endpoint, rebaseline — not in 4 hours
+**Integration track only** ports code. Everyone else sets up env and reads this plan.
 
-### Lane 3 — Studio Lead
+| Who | Task |
+|-----|------|
+| **Integration** | Port `packages/contract/`, `backend/`, `frontend/` from SynchronAIse (skip `action/`). MOCK_MODE end-to-end green. Merge `feat/integration` → `main` within 30 min. |
+| **Everyone else** | `git pull` after bootstrap lands. Python + `uv`, Node, `backend/.env` with at least one of `NVIDIA_API_KEY`, `GEMINI_API_KEY`, `OPENAI_API_KEY`. Claim your track + branch. |
 
-**Owns:** the frontend re-skin. Works against seeded mocks the whole time — no backend
-dependency beyond the contract types from Lane 1.
+---
 
-- StateProof branding (name + tagline *"Proof of how it was."*) in the header
-- Panels: "Pickup" vs "Return" (`Studio.tsx`, `GraphView.tsx`)
-- `DriftScore.tsx` → **Damage Charge Score** in €
-- Asset header: license plate display (no timeline UI — cut)
-- `ExplanationPanel.tsx`: side-by-side photo evidence, reasoning, cited standard, cost
-- `PromptBox.tsx` → "Generate dispute letter" / "Generate charge notice" (existing `/fix`)
+## Tasks by track
 
-### Lane 4 — Data Lead
+### Integration track
 
-**Owns:** the demo car and all ground truth. No code skills needed — a phone and care.
+**Branch:** `feat/integration` · then merges all tracks to `main`
 
-- Photograph a real car: **pickup set** and **return set**, plate clearly visible,
-  consistent angle per checklist element (front, hood, each door, wheels, rear)
-- Only the live-demo case needs real photo pairs: the **pre-registered scratch**
-  (photograph an existing scratch at "pickup", same scratch at "return")
-- Author the four ground-truth condition-graph JSONs against Lane 1's schema
-  (by T+2:00, so Lanes 2–3 can seed):
-  1. New dent on door → `damage` (charge justified, cost estimate)
-  2. Scratch registered at pickup → **not chargeable** — the registry moment
-  3. Dirt / stone-chip dust → `normal_wear`, dismissed with reasoning
-  4. Tire replaced with approval on file → `agreed_change`
-- Put photos + JSONs in `demo/ground-truth/`
-- **Stretch (T+3:00 onward): k3s deploy.** Your data work is done by then — port the
-  proven deploy assets from SynchronAIse (`deploy/helm/synchronaise/`, `deploy.ps1`,
-  `backend/Dockerfile`) and rename: chart `synchronaise` → `stateproof`, image
-  `stateproof-backend:dev`, secret `synchronaise-llm` → `stateproof-llm`. Same
-  contract as before: kubectl context `rancher-desktop`, namespace `hackathon`,
-  `application-collection` pull secret, then
-  `helm upgrade --install stateproof ./deploy/helm/stateproof --namespace hackathon`
-  and `kubectl port-forward -n hackathon svc/stateproof 8080:8080`.
-  **Rule: do not start this until the live VLM run works — and if it fights you,
-  abandon it; local uvicorn is the demo, k3s is bonus credibility**
+| # | Task | When | Done when |
+|---|------|------|-----------|
+| I1 | Port SynchronAIse (`packages/contract/`, `backend/`, `frontend/`) | T+0:00–0:30 | Old UI demo runs in MOCK_MODE |
+| I2 | Merge bootstrap → `main` | T+0:30 | Everyone rebases |
+| I3 | Merge backend + frontend + demo branches as they land | T+0:30–3:00 | MOCK_MODE green after each merge |
+| I4 | Resolve merge conflicts (final say on ties) | ongoing | No broken `main` |
+| I5 | Wire live demo: photo → plate → registry → scratch not chargeable | T+3:00 | Live path works once |
+| I6 | End-to-end smoke test + tagged commit | T+3:30–4:00 | Full loop connects |
 
-### Lane 5 — Integrator Lead
+**Only this track merges to `main` during the build.**
 
-**Owns:** the repo staying green during the build. Runs the bootstrap port first.
-Pitch + rehearsal are deferred to tomorrow morning's practice (see below).
+---
 
-- After bootstrap: keep MOCK_MODE end-to-end green as lanes merge; resolve integration
-  breaks immediately — you outrank everyone on merge conflicts
-- T+3:00: wire the live on-stage run — photograph the car → VLM reads the plate →
-  registry pulls the pickup baseline → StateProof Report shows the pre-existing
-  scratch is **not chargeable**
-- T+3:30–4:00: one end-to-end smoke test of the full loop (not a rehearsal — just
-  proving every piece connects), then commit a clean, tagged end-of-build state
+### Backend — AI & schema
 
+**Branch:** `feat/backend-ai` · **Critical path — on `main` by T+1:00**
+
+| # | Task | File(s) | When |
+|---|------|---------|------|
+| B-A1 | Car element types: `front_bumper`, `hood`, `windshield`, `door_*`, `wheel_*`, `rear` | `backend/app/core/schema.py` | T+0:30–1:00 |
+| B-A2 | Props: `condition`, `defects[]` (type, location, size) | `backend/app/core/schema.py` | T+0:30–1:00 |
+| B-A3 | Audit fields: `asset_id` (plate), `contract_event` (`pickup` / `return`) | `backend/app/core/schema.py` | T+0:30–1:00 |
+| B-A4 | Classification aliases: `damage`, `normal_wear`, `agreed_change` | `backend/app/core/schema.py` | T+0:30–1:00 |
+| B-A5 | Mirror types for frontend | `frontend/src/types/contract.ts` | T+1:00 |
+| B-A6 | Wear-and-tear taxonomy prompt (scratch thresholds, chip counts, standard citation) | `backend/**/classification.md` | T+1:00–2:00 |
+| B-A7 | Heuristic fallback matching taxonomy (MOCK_MODE) | `backend/app/services/classifier.py` | T+1:00–2:00 |
+| B-A8 | NVIDIA NIM provider (`NVIDIA_API_KEY`, `NVIDIA_MODEL`, OpenAI-compatible base URL) | `backend/app/core/config.py`, `vlm.py` | T+2:00–3:00 |
+| B-A9 | Provider chain: **NIM → Gemini → OpenAI → heuristic** | `backend/app/services/vlm.py` | T+2:00–3:00 |
+
+**Allowed paths:** `backend/app/core/schema.py`, `backend/**/classification.md`,
+`backend/app/services/classifier.py` (heuristic), `backend/app/services/vlm.py`,
+`backend/app/core/config.py`, `frontend/src/types/contract.ts`
+
+**Do not touch:** parsers, `storage.py` registry, `frontend/src/**` UI components.
+
+---
+
+### Backend — API & registry
+
+**Branch:** `feat/backend-api` · **Mock T+2:00, live VLM T+3:00**
+
+| # | Task | File(s) | When |
+|---|------|---------|------|
+| B-P1 | Pickup parser: VLM fills checklist from photos | `baseline_parser.py` (was `figma_parser.py`) | T+1:00–2:00 |
+| B-P2 | Return parser | `return_parser.py` (was `code_parser.py`) | T+1:00–2:00 |
+| B-P3 | License plate extraction in VLM prompt | parsers + `vlm.py` | T+1:00–2:00 |
+| B-P4 | Mock path: load JSONs from `demo/ground-truth/` | parsers | T+1:00–2:00 |
+| B-P5 | Plate-keyed registry `{ baseline, audits[] }` | `backend/app/services/storage.py` | T+2:00–3:00 |
+| B-P6 | Auto-link audit when plate recognized (no explicit `asset_id`) | `POST /audit` in `backend/app/api/` | T+2:00–3:00 |
+| B-P7 | Keep `/report/{id}`, `/fix`, `/health` working | `backend/app/api/` | ongoing |
+
+**Allowed paths:** parser modules, `storage.py` (registry), `backend/app/api/`,
+`config.py` (NIM env keys only if not owned by B-A8 — coordinate with Backend — AI)
+
+**Do not touch:** `schema.py`, `contract.ts`, classifier heuristic, `frontend/`, `demo/`.
+
+**Depends on:** B-A1–A5 on `main` (T+1:00), demo JSONs (T+2:00).
+
+---
+
+### Frontend track
+
+**Branch:** `feat/frontend` · **Done by T+3:00**
+
+Work from seeded mocks — no live backend required, only stable `contract.ts`.
+
+| # | Task | File(s) | When |
+|---|------|---------|------|
+| F1 | StateProof branding + tagline *"Proof of how it was."* | `App.tsx`, `Studio.tsx` | T+0:30–1:00 |
+| F2 | Relabel panels: **Pickup** vs **Return** | `Studio.tsx`, `GraphView.tsx` | T+1:00–2:00 |
+| F3 | Drift score → **Damage Charge Score** (€) | `DriftScore.tsx` | T+1:00–2:00 |
+| F4 | License plate in asset header | `Studio.tsx` | T+2:00–3:00 |
+| F5 | Photo evidence, reasoning, cited standard, cost | `ExplanationPanel.tsx` | T+2:00–3:00 |
+| F6 | "Generate dispute letter" / "Generate charge notice" | `PromptBox.tsx` | T+2:00–3:00 |
+| F7 | Wire updated types | `frontend/src/types/contract.ts` | after T+1:00 |
+
+**Allowed paths:** `frontend/src/**` only
+
+**Do not touch:** `backend/`, `packages/contract/`, `demo/`.
+
+**Depends on:** B-A5 / `contract.ts` on `main` (T+1:00).
+
+---
+
+### Demo + deploy track
+
+**Branch:** `feat/demo` · **JSONs on `main` by T+2:00**
+
+| # | Task | Output | When |
+|---|------|--------|------|
+| D1 | Pickup photo set (plate visible, consistent angles per checklist element) | `demo/ground-truth/photos/` | T+0:30–1:30 |
+| D2 | Return photo set | same | T+0:30–1:30 |
+| D3 | Pre-existing scratch pair (live demo) | same | T+1:00–2:00 |
+| D4 | JSON: new dent → `damage` | `demo/ground-truth/*.json` | T+1:00–2:00 |
+| D5 | JSON: registered scratch → **not chargeable** | same | T+1:00–2:00 |
+| D6 | JSON: stone-chip dust → `normal_wear` | same | T+1:00–2:00 |
+| D7 | JSON: approved tire swap → `agreed_change` | same | T+1:00–2:00 |
+
+**Stretch — branch `feat/deploy-k3s` cut at T+3:00 only, after live VLM works:**
+
+| # | Task | File(s) |
+|---|------|---------|
+| D8 | Port Helm chart + deploy scripts from SynchronAIse | `deploy/helm/stateproof/`, `deploy.ps1` |
+| D9 | Rename chart/image/secret: `synchronaise` → `stateproof` | deploy files, `backend/Dockerfile` |
+| D10 | Deploy: context `rancher-desktop`, ns `hackathon`, secret `application-collection` | `helm upgrade --install stateproof ...` |
+
+If k3s fights you → **stop**. Local uvicorn is the demo.
+
+**Allowed paths:** `demo/ground-truth/**`, `deploy/**` (stretch only)
+
+**Do not touch:** `backend/`, `frontend/`, `packages/`.
+
+**Depends on:** schema shape from Backend — AI (T+1:00) for JSON structure.
+
+---
+
+## Timeline
+
+| Time | Integration | Backend — AI | Backend — API | Frontend | Demo + deploy |
+|------|-------------|--------------|---------------|----------|---------------|
+| 0:00–0:30 | **port + merge bootstrap** | env setup | env setup | env setup | start photos |
+| 0:30–1:00 | keep `main` green | **schema → merge** | parser skeletons | branding + labels | photos |
+| 1:00–2:00 | integrate merges | classifier + prompt | parsers vs mock | score + panels | **JSONs → merge** |
+| 2:00–3:00 | integrate merges | NIM + vlm chain | registry + live VLM | evidence panel | seed + verify |
+| 3:00–4:00 | **live demo + smoke test** | freeze | freeze | freeze | k3s stretch (optional) |
+
+---
 
 ## Git branching & merge strategy
 
-Parallel lanes only stay fast if **main stays conflict-free**. Every developer works on a **long-lived feature branch** cut from `main`; **only Lane 5 (Integrator) merges into `main`** during the build. No lane merges its own work to `main`.
+### Branches
 
-### Branches and owners
+| Branch | Track | Purpose |
+|--------|-------|---------|
+| `feat/integration` | Integration | Initial SynchronAIse port |
+| `feat/backend-ai` | Backend — AI | Schema, classifier, VLM/NIM |
+| `feat/backend-api` | Backend — API | Parsers, registry, routes |
+| `feat/frontend` | Frontend | Studio re-skin |
+| `feat/demo` | Demo + deploy | Photos + ground-truth JSONs |
+| `feat/deploy-k3s` | Demo + deploy (stretch) | Helm/Docker — **cut T+3:00 only** |
 
-| Branch | Lane | Owner role | Purpose |
-|--------|------|------------|---------|
-| `feat/bootstrap-port` | Lane 5 | Integrator | Port `packages/contract/`, `backend/`, `frontend/` from SynchronAIse; first green MOCK_MODE on `main` |
-| `feat/contract-taxonomy` | Lane 1 | Contract & Taxonomy Lead | Schema, types, classification doc, heuristic classifier |
-| `feat/backend-parsers-registry` | Lane 2 | Backend Lead | Parsers, VLM, storage registry, NIM config |
-| `feat/studio-reskin` | Lane 3 | Studio Lead | Frontend re-skin only |
-| `feat/demo-data` | Lane 4 | Data Lead | Photos + ground-truth JSONs |
-| `feat/k3s-deploy` | Lane 4 (stretch) | Data Lead | Helm/Docker deploy assets (**branch cut at T+3:00 only**) |
+### Merge order
 
-### Bootstrap-first merge order (non-negotiable)
+1. **T+0:30:** Integration merges `feat/integration` → `main`. Everyone rebases.
+2. **T+1:00:** Integration merges `feat/backend-ai` (schema slice) → `main`. Everyone rebases.
+3. **T+2:00:** Integration merges `feat/demo` (JSONs) → `main` when ready.
+4. **T+0:30–3:00:** Merge backend API, frontend, remaining slices early and often — not one big bang at T+3:00.
+5. **T+3:00:** Feature freeze. Bugfixes and integration only.
+6. **T+3:00+:** Cut `feat/deploy-k3s` from current `main` if attempting k3s.
 
-1. **T+0:00–T+0:30:** All work for the port happens on `feat/bootstrap-port` only. **Do not** cut the other five feature branches for *new commits* until bootstrap is on `main`—empty local branches from `main` at T+0 are fine for naming; real work starts after bootstrap lands.
-2. **Lane 5 merges `feat/bootstrap-port` → `main` within 30 minutes** of kickoff. This is the **only** merge that may happen before everyone else rebases.
-3. **Immediately after bootstrap is on `main`:** Everyone runs `git fetch origin; git checkout main; git pull; git rebase main` (or recreates their feature branch from updated `main`). **All five lane branches must branch from the post-bootstrap `main`**, not pre-bootstrap history.
-4. From T+0:30 onward: lane work stays on the assigned feature branch until the Integrator merges it.
+### Path ownership (no cross-track edits)
 
-### File ownership boundaries (do not cross lanes)
+| Branch | Allowed | Forbidden |
+|--------|---------|-----------|
+| `feat/integration` | `packages/contract/**`, `backend/**`, `frontend/**` | `demo/**`, `deploy/**` |
+| `feat/backend-ai` | `schema.py`, `contract.ts`, `classification.md`, `classifier.py` (heuristic), `vlm.py`, `config.py` | parsers, `storage.py`, frontend UI |
+| `feat/backend-api` | parsers, `storage.py`, `backend/app/api/` | `schema.py`, `contract.ts`, `frontend/**`, `demo/**` |
+| `feat/frontend` | `frontend/src/**` | `backend/**`, `packages/**`, `demo/**` |
+| `feat/demo` | `demo/ground-truth/**` | `backend/**`, `frontend/**`, `packages/**` |
+| `feat/deploy-k3s` | `deploy/**`, Dockerfile refs | app logic, UI, demo content |
 
-Touch **only** the paths your branch owns. If you need a change in another lane’s tree, ping that lane or Lane 5—do not “drive-by” edit.
+Shared docs (`README.md`, `docs/BUILD_PLAN.md`): **Integration track only**.
 
-| Branch | Allowed paths | Do not touch |
-|--------|---------------|--------------|
-| `feat/bootstrap-port` | `packages/contract/**`, `backend/**`, `frontend/**` (initial port only) | `demo/**`, `deploy/**` (except fixes required for green MOCK_MODE agreed with Integrator) |
-| `feat/contract-taxonomy` | `backend/app/core/schema.py`, `frontend/src/types/contract.ts`, `backend/**/classification.md`, `backend/**/classifier.py` (heuristic only) | Parsers, `vlm.py`, `storage.py` registry logic, `frontend/src/**` UI (except `contract.ts`) |
-| `feat/backend-parsers-registry` | Parser modules, `vlm.py`, `storage.py` (registry), `config.py` (NIM keys/models), related backend tests | `schema.py` / `contract.ts` (Lane 1), `frontend/src/**`, `demo/**` |
-| `feat/studio-reskin` | `frontend/src/**` only | `backend/**`, `packages/contract/**` (except consuming types), `demo/**`, `deploy/**` |
-| `feat/demo-data` | `demo/ground-truth/**` only | Application source under `backend/`, `frontend/`, `packages/` |
-| `feat/k3s-deploy` | `deploy/**` only (plus Dockerfile references under `backend/` if required for image build, coordinated with Lane 2) | Runtime app logic, UI, ground-truth content |
+### Conflict rules
 
-Shared files (`README.md`, `docs/BUILD_PLAN.md`, root CI): **Integrator only**, or one-line fixes with Integrator approval.
+- **Schema conflicts:** Backend — AI wins on `schema.py` and `contract.ts`.
+- **Post-bootstrap:** `main` wins; rebase your branch and re-apply.
+- **Stuck:** Integration track adjudicates. When in doubt, keep MOCK_MODE green.
 
-### Merge cadence
+### Per-developer checklist
 
-- **T+1:00 — Lane 1 schema merge:** Integrator merges `feat/contract-taxonomy` → `main` as soon as schema + `contract.ts` are stable. **All other lanes rebase onto `main` the same hour** before continuing parser/UI/JSON work that depends on the schema.
-- **Merge early and often:** Prefer small Integrator merges (schema slice, then classifier doc) over one giant merge at T+3:00. Target at least one merge per lane before feature freeze when the lane has a shippable slice.
-- **Lane 5 merges; lanes do not self-merge:** Open a PR or hand Integrator a clean, rebased branch. Integrator resolves cross-lane conflicts using ownership rules above.
-- **T+3:00 — `feat/k3s-deploy`:** Cut this branch from current `main` only after live VLM path is proven (per Lane 4 stretch rules). Do not start deploy work on a branch created earlier.
-- **Feature freeze at T+3:00:** Only bugfixes and integration merges after freeze; no new feature paths.
+- [ ] Correct branch for your track
+- [ ] Branched from post-bootstrap `main`
+- [ ] Only editing paths in your ownership table
+- [ ] Rebased after schema merge (T+1:00)
+- [ ] Handed to Integration for merge — never self-merge to `main`
 
-### Rebase vs merge
+---
 
-- **On your feature branch (daily):** `git fetch origin; git rebase origin/main` to stay current. Use rebase, not merge commits from `main` into your lane branch, to keep history linear and conflicts small.
-- **Integrator bringing a lane to `main`:** Rebase the feature branch onto latest `main`, run MOCK_MODE smoke, then **merge with merge commit** (or squash per team preference) via Integrator. Never force-push `main`.
-- **Do not** rebase shared branches other people have checked out without coordinating. Rebasing **your** lane branch before handoff to Integrator is expected.
-
-### If you hit merge conflicts
-
-1. **Stop and identify ownership:** Whose path is conflicted? The **owner lane** supplies the correct resolution; Integrator adjudicates ties.
-2. **Rebase workflow:** `git rebase origin/main` → fix conflicts file-by-file → `git add` → `git rebase --continue`. If stuck: `git rebase --abort`, sync with Integrator.
-3. **Schema conflicts (T+1:00):** Lane 1 wins on `schema.py` and `contract.ts`; other lanes re-apply their changes on top after rebasing.
-4. **Bootstrap vs lane:** Post-bootstrap, `main` wins; lanes rebase and re-apply. Never revert bootstrap on `main` to “fix” a lane.
-5. **Escalation:** Lane 5 (Integrator) has final say on conflict resolution during the build. When in doubt, keep MOCK_MODE green and defer non-critical changes.
-
-### Quick checklist per developer
-
-- [ ] On the correct feature branch for your lane  
-- [ ] Branched from **post-bootstrap** `main`  
-- [ ] Only editing paths in your ownership table  
-- [ ] Rebased after Lane 1 schema merge at T+1:00  
-- [ ] Handed off to Integrator for merges to `main`—never self-merge
-
-## Timeline at a glance
-
-| Time | Lane 1 | Lane 2 | Lane 3 | Lane 4 | Lane 5 |
-|---|---|---|---|---|---|
-| 0:00–0:30 | bootstrap | bootstrap | bootstrap | start photos | port + green base |
-| 0:30–1:00 | **schema out** | parser skeletons | branding + labels | photos | keep green |
-| 1:00–2:00 | classifier prompt | parsers vs mock | score + panels | **JSONs out** | integrate |
-| 2:00–3:00 | heuristic + polish | registry + NIM + live VLM | evidence panel | seed + verify | integrate |
-| 3:00–4:00 | — freeze — | — freeze — | — freeze — | k3s stretch | live run + smoke test |
-
-## Tomorrow morning — practice session
-
-Deferred from the build on purpose: the last build hour is integration buffer, and
-rehearsal happens fresh.
-
-- **Pitch** (Lane 5 leads, everyone contributes): rental-dispute pain → live demo →
-  taste story (`normal_wear` reasoning is the differentiator) → ledger framing
-  ("the asset owns its history") → roadmap (apartments, equipment, insurance)
-- **Two full dry runs** of the live moment: photograph the car → plate read →
-  registry baseline → "pre-existing scratch not chargeable"
-- **Verify the fallback**: seeded case 2 must tell the same story offline if the live
-  VLM misbehaves on stage
-- Assign speaking parts and time the pitch
-
-## Cut list (4-hour reality)
-
-- Apartment second-act mock — roadmap slide only now
-- Asset timeline UI + `GET /assets` + rebaseline — plate lookup only
-- GitHub Action — not ported
-- Cost accuracy — flat per-category estimates labeled "indicative"
-- Anything not green at T+3:00 ships in MOCK_MODE
-- k3s deploy is a stretch, never a blocker: local uvicorn is the demo path; NIM is
-  additive (fallback chain unchanged below it)
-
-## Dependencies between lanes
+## Dependencies
 
 ```mermaid
 flowchart LR
-  lane1[Lane1 Schema T+1:00] --> lane2[Lane2 Parsers plus Registry]
-  lane1 --> lane3[Lane3 Studio Reskin]
-  lane1 --> lane4[Lane4 GroundTruth JSONs T+2:00]
-  lane4 --> lane2
-  lane4 --> lane3
-  lane2 --> lane5[Lane5 Live Demo T+3:00]
-  lane3 --> lane5
+  bootstrap[Bootstrap T+0:30] --> schema[Schema T+1:00]
+  schema --> backendAPI[Backend API parsers]
+  schema --> frontend[Frontend reskin]
+  schema --> demoJSON[Demo JSONs T+2:00]
+  demoJSON --> backendAPI
+  backendAPI --> liveDemo[Live demo T+3:00]
+  frontend --> liveDemo
+  demoJSON --> liveDemo
+  liveDemo --> k3s[k3s stretch optional]
 ```
+
+---
+
+## Cut list
+
+- Apartment second-act mock — roadmap slide only
+- Asset timeline UI, `GET /assets`, rebaseline-on-renewal
+- GitHub Action — not ported
+- Cost accuracy — flat estimates labeled "indicative"
+- k3s — stretch only, never blocks demo
+- Anything not green at T+3:00 → MOCK_MODE
+
+---
+
+## Tomorrow morning — practice session
+
+- **Pitch** (Integration leads): rental pain → live demo → `normal_wear` taste story → ledger framing → roadmap
+- **Two dry runs:** photo → plate → registry → scratch not chargeable
+- **Verify fallback:** seeded case D5 (registered scratch) works offline if live VLM fails
+- Assign speaking parts; time the pitch
