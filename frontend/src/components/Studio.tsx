@@ -5,7 +5,7 @@ import { mockDetectComponents } from "../lib/detection";
 import { DriftScore } from "./DriftScore";
 import { GraphView } from "./GraphView";
 import { ExplanationPanel } from "./ExplanationPanel";
-import { type ReturnMedia } from "./ReturnMediaUpload";
+import { type ReturnMedia } from "./ExplanationPanel";
 
 interface Props {
   auditId: string;

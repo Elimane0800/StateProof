@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { AuditPayload, CursorPatch, Classification, Severity } from "../types/contract";
 import { CLASS_COLORS } from "./TreeNode";
 import { PromptBox } from "./PromptBox";
-import { ReturnMediaUpload, type ReturnMedia } from "./ReturnMediaUpload";
+
+export interface ReturnMedia {
+  url: string;
+  type: "image" | "video";
+  name: string;
+}
 
 interface Props {
   audit: AuditPayload;
@@ -52,24 +57,100 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function EvidenceFrame({ label, url, variant }: { label: string; url?: string; variant: "pickup" | "return" }) {
+function EvidenceFrame({
+  label,
+  url,
+  variant,
+  mediaType,
+  onUpload,
+  onClear,
+}: {
+  label: string;
+  url?: string;
+  variant: "pickup" | "return";
+  mediaType?: "image" | "video";
+  onUpload?: (file: File, url: string) => void;
+  onClear?: () => void;
+}) {
   const [failed, setFailed] = useState(false);
-  const showImage = url && !failed;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const uploadable = variant === "return" && !!onUpload;
+  const showVideo = uploadable && mediaType === "video" && url;
+  const showImage = url && !failed && mediaType !== "video";
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onUpload) return;
+    onUpload(file, URL.createObjectURL(file));
+    e.target.value = "";
+    setFailed(false);
+  };
+
+  const openPicker = () => inputRef.current?.click();
 
   return (
     <div className="evidence__photo">
-      <label>{label}</label>
-      <div className={`evidence__frame evidence__frame--${variant}`}>
-        {showImage ? (
+      <div className="evidence__photo-head">
+        <label>{label}</label>
+        {uploadable && url && onClear && (
+          <button
+            type="button"
+            className="btn btn--ghost evidence__clear"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClear();
+            }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div
+        className={`evidence__frame evidence__frame--${variant}${uploadable ? " evidence__frame--uploadable" : ""}`}
+        onClick={uploadable ? openPicker : undefined}
+        onKeyDown={
+          uploadable
+            ? (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openPicker();
+                }
+              }
+            : undefined
+        }
+        role={uploadable ? "button" : undefined}
+        tabIndex={uploadable ? 0 : undefined}
+      >
+        {showVideo ? (
+          <video
+            src={url}
+            controls
+            className="evidence__video"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : showImage ? (
           <img src={url} alt={`${label} inspection`} onError={() => setFailed(true)} />
         ) : (
           <div className="evidence__fallback">
             <span className="evidence__fallback-icon">{variant === "pickup" ? "📷" : "🔍"}</span>
-            <span className="evidence__fallback-label">{label} inspection</span>
-            <span className="evidence__fallback-hint">Vehicle AB-123-CD</span>
+            <span className="evidence__fallback-label">
+              {uploadable ? "Upload return photo or video" : `${label} inspection`}
+            </span>
+            <span className="evidence__fallback-hint">
+              {uploadable ? "JPEG, PNG, MP4, WebM" : "Vehicle AB-123-CD"}
+            </span>
           </div>
         )}
       </div>
+      {uploadable && (
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*,video/*"
+          className="sr-only"
+          onChange={handleFile}
+        />
+      )}
     </div>
   );
 }
@@ -78,26 +159,29 @@ function EvidencePhotos({
   pickupUrl,
   returnUrl,
   returnMedia,
+  onReturnUpload,
+  onReturnClear,
 }: {
   pickupUrl?: string;
   returnUrl: string;
   returnMedia: ReturnMedia | null;
+  onReturnUpload: (file: File, url: string) => void;
+  onReturnClear: () => void;
 }) {
-  const effectiveReturnUrl = returnMedia?.type === "image" ? returnMedia.url : returnUrl;
+  const returnUrlEffective = returnMedia?.url ?? (returnUrl || undefined);
+  const returnLabel = returnMedia?.type === "video" ? "Return video" : "Return photo";
 
   return (
     <div className="evidence">
       <EvidenceFrame label="Pickup" url={pickupUrl} variant="pickup" />
-      {returnMedia?.type === "video" ? (
-        <div className="evidence__photo">
-          <label>Return video</label>
-          <div className="evidence__frame evidence__frame--return">
-            <video src={returnMedia.url} controls className="evidence__video" />
-          </div>
-        </div>
-      ) : (
-        <EvidenceFrame label="Return photo" url={effectiveReturnUrl} variant="return" />
-      )}
+      <EvidenceFrame
+        label={returnLabel}
+        url={returnUrlEffective}
+        variant="return"
+        mediaType={returnMedia?.type}
+        onUpload={onReturnUpload}
+        onClear={onReturnClear}
+      />
     </div>
   );
 }
@@ -114,17 +198,26 @@ export function ExplanationPanel({
   const noise = audit.ignored_as_noise.find((n) => n.node_id === selectedNodeId) || null;
   const evolution = audit.evolution_proposals.find((e) => e.node_id === selectedNodeId) || null;
 
+  const evidenceBlock = (
+    <EvidencePhotos
+      pickupUrl={audit.pickup_screenshot_url}
+      returnUrl={audit.screenshot_url}
+      returnMedia={returnMedia}
+      onReturnUpload={onReturnUpload}
+      onReturnClear={onReturnClear}
+    />
+  );
+
   if (!selectedNodeId) {
     return (
       <aside className="panel">
-        <ReturnMediaUpload
-          media={returnMedia}
-          onUpload={onReturnUpload}
-          onClear={onReturnClear}
-        />
+        {evidenceBlock}
         <div className="panel__empty">
           <h3>Select a body part</h3>
-          <p>Upload return media to detect visible components, then tap any element in the graph for evidence and charge details.</p>
+          <p>
+            Upload return media to detect visible components, then tap any element in the graph for
+            evidence and charge details.
+          </p>
         </div>
       </aside>
     );
@@ -132,20 +225,11 @@ export function ExplanationPanel({
 
   return (
     <aside className="panel">
-      <ReturnMediaUpload
-        media={returnMedia}
-        onUpload={onReturnUpload}
-        onClear={onReturnClear}
-      />
       <header className="panel__head">
         <span className="panel__node">{selectedNodeId}</span>
       </header>
 
-      <EvidencePhotos
-        pickupUrl={audit.pickup_screenshot_url}
-        returnUrl={audit.screenshot_url}
-        returnMedia={returnMedia}
-      />
+      {evidenceBlock}
 
       {finding && (
         <section>

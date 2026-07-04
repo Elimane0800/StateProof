@@ -220,83 +220,6 @@ html,
   border: 1px solid rgba(139, 92, 246, 0.35);
 }
 
-/* Return media upload */
-.return-upload {
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 14px;
-  margin-bottom: 14px;
-}
-.return-upload__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-.return-upload__title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted);
-}
-.return-upload__clear {
-  font-size: 11px;
-  padding: 2px 8px;
-}
-.return-upload__dropzone {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 18px 12px;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  background: var(--surface-2);
-  color: var(--text);
-  cursor: pointer;
-  font-family: inherit;
-}
-.return-upload__dropzone:hover {
-  border-color: #8b5cf6;
-  background: #1a1f2b;
-}
-.return-upload__icon {
-  font-size: 22px;
-}
-.return-upload__label {
-  font-size: 13px;
-  font-weight: 600;
-}
-.return-upload__hint {
-  font-size: 11px;
-  color: var(--muted);
-}
-.return-upload__preview {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.return-upload__media {
-  width: 100%;
-  max-height: 160px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: #0b0e14;
-}
-.return-upload__filename {
-  font-size: 11px;
-  color: var(--muted);
-  font-family: "JetBrains Mono", monospace;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.return-upload__replace {
-  width: 100%;
-  margin-top: 8px;
-}
-
 .tree-node {
   width: 190px;
   height: 60px;
@@ -409,13 +332,23 @@ html,
   gap: 10px;
   margin-bottom: 12px;
 }
+.evidence__photo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
 .evidence__photo label {
   display: block;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--muted);
-  margin-bottom: 4px;
+  margin-bottom: 0;
+}
+.evidence__clear {
+  font-size: 11px;
+  padding: 2px 8px;
 }
 .evidence__frame {
   aspect-ratio: 4 / 3;
@@ -435,6 +368,14 @@ html,
 }
 .evidence__frame--pickup {
   border-style: dashed;
+}
+.evidence__frame--uploadable {
+  cursor: pointer;
+  border-style: dashed;
+}
+.evidence__frame--uploadable:hover {
+  border-color: #8b5cf6;
+  background: #1a1f2b;
 }
 .evidence__fallback {
   display: flex;
