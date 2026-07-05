@@ -49,6 +49,34 @@ export async function postReturnInspection(
   return (await res.json()) as AuditPayload;
 }
 
+/**
+ * First-run inspection from the intake screen: pickup + return media → audit.
+ * Falls back to the frozen mock so the demo still renders if the backend is down.
+ */
+export async function startInspection(
+  plate: string,
+  pickupFile: File,
+  returnFile: File
+): Promise<{ audit: AuditPayload; detected: Set<string> }> {
+  try {
+    const [pickup_b64, screenshot_b64] = await Promise.all([
+      fileToBase64(pickupFile),
+      fileToBase64(returnFile),
+    ]);
+    const res = await fetch(`${API_URL}/inspection/return`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ asset_id: plate, pickup_b64, screenshot_b64 }),
+    });
+    if (!res.ok) throw new Error(`Inspection failed: HTTP ${res.status}`);
+    const audit = (await res.json()) as AuditPayload;
+    return { audit, detected: mockDetectComponents(audit) };
+  } catch {
+    const audit = mock as AuditPayload;
+    return { audit, detected: mockDetectComponents(audit) };
+  }
+}
+
 /** Run return inspection when backend is up; otherwise mock detection on current audit. */
 export async function runReturnInspection(
   plate: string,

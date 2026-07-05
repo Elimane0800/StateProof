@@ -13,6 +13,7 @@ interface Props {
   audit: AuditPayload;
   selectedNodeId: string | null;
   onGeneratedPatch: (patch: CursorPatch) => void;
+  pickupMedia?: ReturnMedia | null;
   returnMedia: ReturnMedia | null;
   onReturnUpload: (file: File, url: string) => void;
   onReturnClear: () => void;
@@ -75,7 +76,7 @@ function EvidenceFrame({
   const [failed, setFailed] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadable = variant === "return" && !!onUpload;
-  const showVideo = uploadable && mediaType === "video" && url;
+  const showVideo = mediaType === "video" && !!url;
   const showImage = url && !failed && mediaType !== "video";
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -158,22 +159,31 @@ function EvidenceFrame({
 function EvidencePhotos({
   pickupUrl,
   returnUrl,
+  pickupMedia,
   returnMedia,
   onReturnUpload,
   onReturnClear,
 }: {
   pickupUrl?: string;
   returnUrl: string;
+  pickupMedia?: ReturnMedia | null;
   returnMedia: ReturnMedia | null;
   onReturnUpload: (file: File, url: string) => void;
   onReturnClear: () => void;
 }) {
+  const pickupUrlEffective = pickupMedia?.url ?? (pickupUrl || undefined);
+  const pickupLabel = pickupMedia?.type === "video" ? "Pickup video" : "Pickup";
   const returnUrlEffective = returnMedia?.url ?? (returnUrl || undefined);
   const returnLabel = returnMedia?.type === "video" ? "Return video" : "Return photo";
 
   return (
     <div className="evidence">
-      <EvidenceFrame label="Pickup" url={pickupUrl} variant="pickup" />
+      <EvidenceFrame
+        label={pickupLabel}
+        url={pickupUrlEffective}
+        variant="pickup"
+        mediaType={pickupMedia?.type}
+      />
       <EvidenceFrame
         label={returnLabel}
         url={returnUrlEffective}
@@ -190,6 +200,7 @@ export function ExplanationPanel({
   audit,
   selectedNodeId,
   onGeneratedPatch,
+  pickupMedia,
   returnMedia,
   onReturnUpload,
   onReturnClear,
@@ -202,6 +213,7 @@ export function ExplanationPanel({
     <EvidencePhotos
       pickupUrl={audit.pickup_screenshot_url}
       returnUrl={audit.screenshot_url}
+      pickupMedia={pickupMedia}
       returnMedia={returnMedia}
       onReturnUpload={onReturnUpload}
       onReturnClear={onReturnClear}

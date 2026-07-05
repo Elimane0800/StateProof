@@ -34,15 +34,24 @@ def return_inspection(request: ReturnInspectionRequest) -> AuditPayload:
         payload = demo_loader.resolve_mock_payload(plate)
         payload.asset_id = demo_loader.normalize_plate(plate)
         payload.audit_id = request.audit_id or payload.audit_id or f"return-{uuid.uuid4().hex[:8]}"
+
+        def _persist(b64: str, suffix: str) -> str:
+            """Save an uploaded base64 frame under artifacts and return its URL."""
+            raw = base64.b64decode(b64.split(",", 1)[-1])
+            settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
+            art = settings.artifacts_dir / f"{payload.audit_id}-{suffix}.png"
+            art.write_bytes(raw)
+            return f"/artifacts/{art.name}"
+
         if request.screenshot_url:
             payload.screenshot_url = request.screenshot_url
         elif request.screenshot_b64:
-            # Persist uploaded frame under artifacts for evidence URLs.
-            raw = base64.b64decode(request.screenshot_b64.split(",", 1)[-1])
-            art = settings.artifacts_dir / f"{payload.audit_id}-return.png"
-            settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
-            art.write_bytes(raw)
-            payload.screenshot_url = f"/artifacts/{art.name}"
+            payload.screenshot_url = _persist(request.screenshot_b64, "return")
+
+        if request.pickup_screenshot_url:
+            payload.pickup_screenshot_url = request.pickup_screenshot_url
+        elif request.pickup_b64:
+            payload.pickup_screenshot_url = _persist(request.pickup_b64, "pickup")
         storage.save(payload)
         storage.register_plate_audit(plate, payload.audit_id)
         return payload

@@ -102,13 +102,17 @@ class AuditRequest(BaseModel):
 
 
 class ReturnInspectionRequest(BaseModel):
-    """StateProof return inspection: plate + return media → audit payload."""
+    """StateProof return inspection: plate + pickup/return media → audit payload."""
 
     asset_id: str = Field(..., description="License plate, e.g. AB-123-CD")
     audit_id: Optional[str] = Field(default=None, description="Existing audit id to update.")
     screenshot_url: Optional[str] = None
     screenshot_b64: Optional[str] = Field(
         default=None, description="Base64-encoded return photo or video frame."
+    )
+    pickup_screenshot_url: Optional[str] = None
+    pickup_b64: Optional[str] = Field(
+        default=None, description="Base64-encoded pickup baseline photo or video frame."
     )
 
 

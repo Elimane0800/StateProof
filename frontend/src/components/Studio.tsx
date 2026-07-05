@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
-import { getReport, runReturnInspection } from "../api/client";
+import { getReport, runReturnInspection, startInspection } from "../api/client";
 import type { AuditPayload, CursorPatch } from "../types/contract";
 import { DriftScore } from "./DriftScore";
 import { GraphView } from "./GraphView";
 import { ExplanationPanel } from "./ExplanationPanel";
 import { type ReturnMedia } from "./ExplanationPanel";
+import { IntakePanel, type IntakeResult } from "./IntakePanel";
 
 interface Props {
-  auditId: string;
+  /** Deep-linked report id (#/report/:id), or null to start on the intake screen. */
+  auditId: string | null;
 }
 
 export function Studio({ auditId }: Props) {
   const [audit, setAudit] = useState<AuditPayload | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [lastPatch, setLastPatch] = useState<CursorPatch | null>(null);
+  const [pickupMedia, setPickupMedia] = useState<ReturnMedia | null>(null);
   const [returnMedia, setReturnMedia] = useState<ReturnMedia | null>(null);
   const [detectedComponentIds, setDetectedComponentIds] = useState<Set<string> | null>(null);
 
@@ -24,6 +27,7 @@ export function Studio({ auditId }: Props) {
     null;
 
   useEffect(() => {
+    if (!auditId) return;
     let alive = true;
     getReport(auditId).then((payload) => {
       if (!alive) return;
@@ -35,6 +39,27 @@ export function Studio({ auditId }: Props) {
     };
   }, [auditId]);
 
+  const handleIntakeRun = async (intake: IntakeResult) => {
+    setPickupMedia({
+      url: intake.pickupUrl,
+      type: intake.pickupFile.type.startsWith("video/") ? "video" : "image",
+      name: intake.pickupFile.name,
+    });
+    setReturnMedia({
+      url: intake.returnUrl,
+      type: intake.returnFile.type.startsWith("video/") ? "video" : "image",
+      name: intake.returnFile.name,
+    });
+    const { audit: nextAudit, detected } = await startInspection(
+      intake.plate,
+      intake.pickupFile,
+      intake.returnFile
+    );
+    setAudit(nextAudit);
+    setDetectedComponentIds(detected);
+    setSelectedNodeId(selectRegistryHero(nextAudit));
+  };
+
   useEffect(() => {
     return () => {
       if (returnMedia?.url.startsWith("blob:")) {
@@ -42,6 +67,14 @@ export function Studio({ auditId }: Props) {
       }
     };
   }, [returnMedia]);
+
+  useEffect(() => {
+    return () => {
+      if (pickupMedia?.url.startsWith("blob:")) {
+        URL.revokeObjectURL(pickupMedia.url);
+      }
+    };
+  }, [pickupMedia]);
 
   const handleReturnUpload = async (file: File, url: string) => {
     if (!audit) return;
@@ -74,7 +107,11 @@ export function Studio({ auditId }: Props) {
   };
 
   if (!audit) {
-    return <div className="loading">Loading audit…</div>;
+    // Deep-linked report still loading; otherwise show the upload-first intake.
+    if (auditId) {
+      return <div className="loading">Loading audit…</div>;
+    }
+    return <IntakePanel onRun={handleIntakeRun} />;
   }
 
   const selectedClassification =
@@ -104,6 +141,7 @@ export function Studio({ auditId }: Props) {
           audit={audit}
           selectedNodeId={selectedNodeId}
           onGeneratedPatch={setLastPatch}
+          pickupMedia={pickupMedia}
           returnMedia={returnMedia}
           onReturnUpload={handleReturnUpload}
           onReturnClear={handleReturnClear}
