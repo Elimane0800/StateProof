@@ -1,13 +1,13 @@
 """
-Agent B — Module de détection / alignement (Étape 3 + Étape 5).
+Agent B — Detection / alignment module (steps 3 + 5).
 
-But : prendre entry_graph et exit_graph (même structure de nœuds, par
-construction — même config de checkpoints) et produire la liste des écarts
-classifiés + un score de confiance global.
+Goal: take entry_graph and exit_graph (same node structure, by construction — same
+checkpoint config) and produce the list of classified divergences + a global
+confidence score.
 
-Ordre de code recommandé : prompts (1, testé isolément) -> nodes.compare_node (2)
--> ce fichier: align (3) -> itération prompt sur technical_noise (4, dans prompts)
--> compute_confidence_score (5, pure, sans LLM).
+Recommended code order: prompts (1, tested in isolation) -> nodes.compare_node (2)
+-> this file: align (3) -> prompt iteration on technical_noise (4, in prompts)
+-> compute_confidence_score (5, pure, no LLM).
 """
 
 from __future__ import annotations
@@ -20,9 +20,9 @@ from agents.Agent_B.nodes import compare_node
 from agents.Agent_B.state import AlignmentState
 from agents.common.schemas import AlignmentEdge, Graph, Severity
 
-# Pondération de la sévérité dans le score de confiance global (Étape 5).
-# Formule volontairement simple et explicable en une phrase : "moyenne
-# pondérée par sévérité des confidences de chaque arête".
+# Severity weighting in the global confidence score (step 5).
+# Deliberately simple, explainable formula: "severity-weighted average of each
+# edge's confidence".
 SEVERITY_WEIGHTS = {
     Severity.NONE: 0.5,
     Severity.LOW: 1.0,
@@ -32,11 +32,10 @@ SEVERITY_WEIGHTS = {
 
 
 def align(entry_graph: Graph, exit_graph: Graph) -> List[AlignmentEdge]:
-    """Compare chaque checkpoint commun aux deux graphes.
+    """Compare each common checkpoint across both graphs.
 
-    Aucun problème de correspondance à résoudre : par construction, les
-    `id` sont les mêmes (même config de checkpoints pour l'entrée et la
-    sortie) — c'est une simple boucle, pas du matching de graphe.
+    No matching problem to solve: by construction, `id`s are the same (same
+    checkpoint config for entry and exit) — a simple loop, not graph matching.
     """
     common_ids = entry_graph.checkpoint_node_ids() & exit_graph.checkpoint_node_ids()
 
@@ -50,10 +49,10 @@ def align(entry_graph: Graph, exit_graph: Graph) -> List[AlignmentEdge]:
 
 
 def compute_confidence_score(edges: List[AlignmentEdge]) -> float:
-    """Moyenne pondérée par sévérité des `confidence` de chaque arête.
+    """Severity-weighted average of each edge's `confidence`.
 
-    Fonction pure, sans LLM. C'est le chiffre affiché en page de garde du
-    rapport PDF (Module C) — la formule doit rester simple et explicable.
+    Pure function, no LLM. This is the figure on the PDF cover page (Module C) —
+    the formula must stay simple and explainable.
     """
     if not edges:
         return 0.0
@@ -71,7 +70,7 @@ def compute_confidence_score(edges: List[AlignmentEdge]) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Orchestration LangGraph (optionnelle) — homogène avec Agent_A
+# Optional LangGraph orchestration — consistent with Agent_A
 # ---------------------------------------------------------------------------
 
 def _align_step(state: AlignmentState) -> AlignmentState:
@@ -95,8 +94,8 @@ def compile_agent_b_graph():
 
 
 if __name__ == "__main__":
-    # Exemple : Module B testable avec des Node écrits à la main pendant que
-    # le Module A n'est pas encore prêt (mock, cf. point de jonction).
+    # Example: Module B testable with hand-written Nodes while Module A is not
+    # ready yet (mock, see junction point).
     from agents.common.schemas import Node, NodeProperties
 
     entry = Graph(

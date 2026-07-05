@@ -1,27 +1,23 @@
-# Dossier de test — Module A + B + visualisation
+# Test folder — Module A + B + visualization
 
-Déposez ici vos deux photos du même checkpoint :
+Drop your two photos of the same checkpoint here:
 
 ```
-data/test/entry.jpg   # photo "avant" (entrée)
-data/test/exit.jpg    # photo "après" (sortie)
+data/test/entry.jpg   # "before" photo (entry)
+data/test/exit.jpg    # "after" photo (exit)
 ```
 
-(n'importe quelle extension image standard convient : .jpg, .jpeg, .png)
+(Any standard image extension works: `.jpg`, `.jpeg`, `.png`)
 
-Puis lancez :
+Then run:
 
 ```bash
 uv run scripts/run_visual_test.py --entry-image data/test/entry.jpg --exit-image data/test/exit.jpg
 ```
 
-Résultat écrit dans `data/test/annotated/` :
+Output is written to `data/test/annotated/`:
 
-- `{checkpoint_id}_avant.jpg` — photo d'entrée avec un watermark **vert**
-  semi-transparent sur la zone de divergence détectée.
-- `{checkpoint_id}_apres.jpg` — photo de sortie avec un watermark **rouge**
-  semi-transparent sur la même zone.
+- `{checkpoint_id}_avant.jpg` — entry photo with a semi-transparent **green** watermark on the detected divergence zone.
+- `{checkpoint_id}_apres.jpg` — exit photo with a semi-transparent **red** watermark on the same zone.
 
-Si le modèle ne peut pas localiser précisément l'anomalie (changement
-diffus, ou `status="unchanged"`), un simple liseré coloré encadre l'image
-entière plutôt qu'une zone remplie.
+If the model cannot localize the anomaly precisely (diffuse change, or `status="unchanged"`), a simple colored border frames the entire image instead of a filled zone.

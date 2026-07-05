@@ -1,8 +1,8 @@
 """
-ARIA — Structures de données partagées entre les modules A, B, C, D.
+ARIA — Shared data structures between modules A, B, C, D.
 
-C'est le point de jonction : chaque module ne dépend QUE de ces schémas,
-jamais de l'implémentation interne des autres modules.
+This is the junction point: each module depends ONLY on these schemas, never on
+other modules' internal implementation.
 """
 
 from agents.common.schemas import (

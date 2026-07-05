@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Trigger indépendant — Module B (détection / alignement entrée-sortie).
+Independent trigger — Module B (entry/exit detection / alignment).
 
-Usage :
+Usage:
     uv run scripts/run_agent_b.py
     uv run scripts/run_agent_b.py --entry-graph entry_graph.json \\
         --exit-graph exit_graph.json --output edges.json
 
-Sans --entry-graph/--exit-graph, tourne sur une paire de Node mockés (aucune
-dépendance sur le Module A) — nécessite quand même NVIDIA_API_KEY, car
-compare_node fait toujours un appel LLM (pas de mode "zéro LLM" côté B).
+Without --entry-graph/--exit-graph, runs on a mocked Node pair (no Module A
+dependency) — still requires NVIDIA_API_KEY because compare_node always calls
+the LLM (no "zero LLM" mode on B).
 """
 
 from __future__ import annotations
@@ -54,20 +54,20 @@ def main() -> None:
         entry_graph = Graph.model_validate_json(Path(args.entry_graph).read_text())
         exit_graph = Graph.model_validate_json(Path(args.exit_graph).read_text())
     else:
-        print("[Module B] Aucun graphe fourni (--entry-graph/--exit-graph) : "
-              "smoke test sur une paire de Node mockés (appel LLM réel malgré tout).")
+        print("[Module B] No graphs provided (--entry-graph/--exit-graph): "
+              "smoke test on a mocked Node pair (real LLM call anyway).")
         entry_graph, exit_graph = _mock_graphs()
 
     try:
         edges = align(entry_graph, exit_graph)
     except Exception as e:  # noqa: BLE001
-        print(f"[Module B] Échec : {e}\nVérifiez NVIDIA_API_KEY (export dans le terminal ou fichier .env).")
+        print(f"[Module B] Failed: {e}\nCheck NVIDIA_API_KEY (export in terminal or .env file).")
         sys.exit(1)
 
     score = compute_confidence_score(edges)
 
     Path(args.output).write_text(json.dumps([e.model_dump() for e in edges], indent=2, ensure_ascii=False))
-    print(f"[Module B] {len(edges)} arête(s) -> {args.output} | confidence_score = {score}")
+    print(f"[Module B] {len(edges)} edge(s) -> {args.output} | confidence_score = {score}")
 
 
 if __name__ == "__main__":

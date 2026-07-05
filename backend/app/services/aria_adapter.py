@@ -29,7 +29,7 @@ from app.core.schema import (
     Severity,
     TreeNode,
 )
-from app.services import patch
+from app.services import display_en, patch
 
 log = logging.getLogger("stateproof.aria")
 
@@ -71,7 +71,7 @@ def _severity(raw: Any) -> Severity:
 
 
 def _label(checkpoint_id: str) -> str:
-    return checkpoint_id.replace("_", " ").title()
+    return display_en.checkpoint_label(checkpoint_id)
 
 
 def _write_frame(b64: str, audit_id: str, suffix: str) -> Path:
@@ -92,24 +92,23 @@ def _condition_str(node: Any) -> str:
     if node is None:
         return "unknown"
     props = node.properties
-    parts = [props.condition or "unknown"]
-    if props.defects:
-        parts.append(", ".join(props.defects))
-    return " - ".join(parts)
+    return display_en.condition_summary(props.condition, props.defects or None)
 
 
 def _node_to_tree(node: Any, classification: Classification) -> TreeNode:
-    props: dict[str, Any] = {"condition": node.properties.condition}
+    props: dict[str, Any] = {
+        "condition": display_en.condition_label(node.properties.condition),
+    }
     if node.properties.material:
         props["material"] = node.properties.material
     if node.properties.color:
         props["color"] = node.properties.color
     if node.properties.defects:
-        props["defects"] = node.properties.defects
+        props["defects"] = [display_en.defect_label(d) for d in node.properties.defects]
     return TreeNode(
         id=node.id,
         label=_label(node.checkpoint_id),
-        type=node.element_type or "part",
+        type=display_en.element_type_label(node.element_type),
         classification=classification,
         props=props,
     )
@@ -168,7 +167,10 @@ def _to_audit_payload(
             reasoning = edge.reasoning or ""
             legal = legal_by_node.get(edge.node_id)
             if legal and legal.reasoning:
-                reasoning = f"{reasoning}\n\nLegal qualification: {legal.reasoning}"
+                reasoning = (
+                    f"{reasoning}\n\nLegal qualification: "
+                    f"{display_en.legal_reasoning_en(legal.reasoning)}"
+                )
             expected = _condition_str(entry_node)
             actual = _condition_str(exit_node)
             findings.append(
@@ -176,7 +178,7 @@ def _to_audit_payload(
                     type="damage",
                     classification=Classification.DESIGN_VIOLATION,
                     severity=severity,
-                    location=edge.room or "exterieur",
+                    location=display_en.room_label(edge.room),
                     node_id=edge.node_id,
                     bbox=edge.bbox_pct,
                     expected=expected,
@@ -187,7 +189,7 @@ def _to_audit_payload(
                         expected=expected,
                         actual=actual,
                         cost=cost,
-                        location=edge.room or "exterieur",
+                        location=display_en.room_label(edge.room),
                     ),
                 )
             )

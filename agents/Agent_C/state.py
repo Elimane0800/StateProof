@@ -1,4 +1,4 @@
-"""Agent C — State partagé par le pipeline de génération du PDF."""
+"""Agent C — Shared state for the PDF generation pipeline."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from agents.common.schemas import AlignmentEdge, Graph, LegalQualification, Repo
 
 
 class ReportState(TypedDict, total=False):
-    # Entrées (contrat de données uniquement — Module C ignore comment elles ont été calculées)
+    # Inputs (data contract only — Module C ignores how they were computed)
     entry_graph: Graph
     exit_graph: Graph
     edges: List[AlignmentEdge]
@@ -19,6 +19,6 @@ class ReportState(TypedDict, total=False):
     exit_date: Optional[str]
     output_path: str
 
-    # Sorties
+    # Outputs
     report_data: ReportData
     pdf_path: str

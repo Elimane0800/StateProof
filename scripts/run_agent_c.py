@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Trigger indépendant — Module C (génération du PDF). Zéro appel LLM.
+Independent trigger — Module C (PDF generation). Zero LLM calls.
 
-Usage :
-    # Rendu avec des données 100% mockées, aucune dépendance sur A/B/D :
+Usage:
+    # Render with 100% mocked data, no A/B/D dependency:
     uv run scripts/run_agent_c.py --mock --output rapport_mock.pdf
 
-    # Pipeline complet à partir des fichiers produits par les autres modules :
+    # Full pipeline from files produced by other modules:
     uv run scripts/run_agent_c.py \\
         --entry-graph entry_graph.json --exit-graph exit_graph.json \\
         --edges edges.json --score 0.87 --output rapport.pdf \\
@@ -49,19 +49,19 @@ def _mock_report() -> ReportData:
             SummaryRow(checkpoint_id="prise_electrique", room="salon", status="—", severity="—", cost_eur=0, data_available=False),
         ],
         detailed_sections=[
-            DetailedSection(checkpoint_id="mur_nord", room="salon", reasoning="Impact localisé incompatible avec un vieillissement normal.", cost_eur=45),
-            DetailedSection(checkpoint_id="sol", room="chambre", reasoning="Usure diffuse cohérente avec la durée d'occupation.", cost_eur=0),
+            DetailedSection(checkpoint_id="mur_nord", room="salon", reasoning="Localized impact incompatible with normal aging.", cost_eur=45),
+            DetailedSection(checkpoint_id="sol", room="chambre", reasoning="Diffuse wear consistent with occupancy duration.", cost_eur=0),
             DetailedSection(checkpoint_id="prise_electrique", room="salon", reasoning="", cost_eur=0, data_available=False),
         ],
         unchanged_checkpoints=["mur_sud", "fenetre"],
         total_cost_eur=45,
-        negotiation_points=["salon / mur_nord : Impact localisé incompatible avec un vieillissement normal. (~45 €)"],
+        negotiation_points=["salon / mur_nord: Localized impact incompatible with normal aging. (~45 €)"],
     )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Module C — prepare_report_data + render_pdf")
-    parser.add_argument("--mock", action="store_true", help="Rendu avec des données mockées (Étape 3).")
+    parser.add_argument("--mock", action="store_true", help="Render with mocked data (step 3).")
     parser.add_argument("--entry-graph", default=None)
     parser.add_argument("--exit-graph", default=None)
     parser.add_argument("--edges", default=None)
@@ -76,10 +76,10 @@ def main() -> None:
 
     if args.mock or not (args.entry_graph and args.exit_graph and args.edges):
         if not args.mock:
-            print("[Module C] Arguments incomplets (--entry-graph/--exit-graph/--edges) : "
-                  "smoke test avec le rapport mocké (Étape 3).")
+            print("[Module C] Incomplete arguments (--entry-graph/--exit-graph/--edges): "
+                  "smoke test with mocked report (step 3).")
         render_pdf(_mock_report(), args.output)
-        print(f"[Module C] PDF mocké -> {args.output}")
+        print(f"[Module C] Mock PDF -> {args.output}")
         return
 
     entry_graph = Graph.model_validate_json(Path(args.entry_graph).read_text())
@@ -97,7 +97,7 @@ def main() -> None:
         address=args.address, entry_date=args.entry_date, exit_date=args.exit_date,
         composites_dir=args.composites_dir,
     )
-    print(f"[Module C] Rapport -> {args.output}")
+    print(f"[Module C] Report -> {args.output}")
 
 
 if __name__ == "__main__":

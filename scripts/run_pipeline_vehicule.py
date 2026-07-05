@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
 """
-Trigger — pipeline complet véhicule : Module A -> B -> D -> C.
+Trigger — full vehicle pipeline: Module A -> B -> D -> C.
 
-Domaine "véhicule" : contrairement au domaine immobilier (1 photo = 1
-checkpoint), ici UNE photo contient PLUSIEURS checkpoints à la fois (ex :
-une photo d'extérieur montre pare-choc + portière + jante + pare-brise en
-même temps). Le pipeline attend donc 4 photos au total : extérieur/intérieur
-x avant/après.
+"Vehicle" domain: unlike real estate (1 photo = 1 checkpoint), ONE photo here
+contains SEVERAL checkpoints at once (e.g. an exterior photo shows bumper +
+door + wheel + windshield together). The pipeline therefore expects 4 photos
+total: exterior/interior × before/after.
 
-Étapes :
-  1. Module A (build_graph_from_zone_images) — 1 appel VLM par photo (donc 2
-     par état : extérieur + intérieur), chaque appel extrait TOUS les
-     checkpoints visibles + leur localisation (bbox_pct) dans cette photo.
-  2. Module B (align) — compare chaque checkpoint commun entrée/sortie,
-     produit les `AlignmentEdge` (status, sévérité, coût, bbox_pct).
-  3. Visualisation (annotate_divergence) — cercle localisé sur chaque écart,
-     en utilisant en priorité la localisation du Module A (indispensable
-     puisque plusieurs checkpoints partagent la même photo).
-  4. Module D (qualify) — qualification légale de chaque écart (vétusté vs
-     dégradation), Mode 1 (grille) si `--grid` couvre la catégorie, sinon
-     Mode 2 (raisonnement LLM).
-  5. Module C (build_report) — assemble tout dans un PDF final.
+Steps:
+  1. Module A (build_graph_from_zone_images) — 1 VLM call per photo (2 per state:
+     exterior + interior), each call extracts ALL visible checkpoints + their
+     localization (bbox_pct) in that photo.
+  2. Module B (align) — compares each common entry/exit checkpoint, produces
+     `AlignmentEdge`s (status, severity, cost, bbox_pct).
+  3. Visualization (annotate_divergence) — localized circle on each divergence,
+     preferring Module A localization (essential when several checkpoints share
+     the same photo).
+  4. Module D (qualify) — legal qualification of each divergence (wear vs
+     damage), Mode 1 (grid) if `--grid` covers the category, else Mode 2 (LLM).
+  5. Module C (build_report) — assembles everything into a final PDF.
 
-Usage :
+Usage:
     uv run scripts/run_pipeline_vehicule.py
 
     uv run scripts/run_pipeline_vehicule.py \\
@@ -34,7 +32,7 @@ Usage :
         --occupancy-months 12 \\
         --output-pdf data/test/vehicule/rapport_vehicule.pdf
 
-Nécessite NVIDIA_API_KEY (Modules A, B et D-Mode2 font des appels LLM/VLM).
+Requires NVIDIA_API_KEY (Modules A, B, and D Mode 2 make LLM/VLM calls).
 """
 
 from __future__ import annotations
@@ -64,16 +62,16 @@ def _load_grid(path: Optional[str]) -> Optional[Dict[str, VetusteGridEntry]]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Pipeline complet véhicule — Module A -> B -> D -> C")
+    parser = argparse.ArgumentParser(description="Full vehicle pipeline — Module A -> B -> D -> C")
     parser.add_argument("--config", default="config/checkpoints_vehicule.example.json")
     parser.add_argument("--entry-exterior", default="data/test/vehicule/entry_exterieur.jpg")
     parser.add_argument("--entry-interior", default="data/test/vehicule/entry_interieur.jpg")
     parser.add_argument("--exit-exterior", default="data/test/vehicule/exit_exterieur.jpg")
     parser.add_argument("--exit-interior", default="data/test/vehicule/exit_interieur.jpg")
     parser.add_argument("--occupancy-months", type=int, default=12,
-                         help="Durée entre l'état d'entrée et de sortie (mois), utilisée par le Module D.")
+                         help="Duration between entry and exit (months), used by Module D.")
     parser.add_argument("--grid", default=None,
-                         help="JSON de grille de vétusté (Mode 1 du Module D). Optionnel.")
+                         help="Wear grid JSON (Module D Mode 1). Optional.")
     parser.add_argument("--address", default=None)
     parser.add_argument("--output-pdf", default="data/test/vehicule/rapport_vehicule.pdf")
     parser.add_argument("--annotated-dir", default="data/test/vehicule/annotated")
@@ -81,43 +79,43 @@ def main() -> None:
     args = parser.parse_args()
 
     images = {
-        "entrée / extérieur": Path(args.entry_exterior),
-        "entrée / intérieur": Path(args.entry_interior),
-        "sortie / extérieur": Path(args.exit_exterior),
-        "sortie / intérieur": Path(args.exit_interior),
+        "entry / exterior": Path(args.entry_exterior),
+        "entry / interior": Path(args.entry_interior),
+        "exit / exterior": Path(args.exit_exterior),
+        "exit / interior": Path(args.exit_interior),
     }
     missing = [label for label, path in images.items() if not path.exists()]
     if missing:
-        print("[Pipeline véhicule] Photo(s) manquante(s) : " + ", ".join(missing))
-        print("Déposez vos 4 photos dans data/test/vehicule/ (voir data/test/vehicule/README.md).")
+        print("[Vehicle pipeline] Missing photo(s): " + ", ".join(missing))
+        print("Drop your 4 photos in data/test/vehicule/ (see data/test/vehicule/README.md).")
         sys.exit(1)
 
     config = PropertyConfig.from_json_file(args.config)
 
     try:
-        print("[Module A] Extraction entrée (extérieur + intérieur)...")
+        print("[Module A] Entry extraction (exterior + interior)...")
         entry_graph = build_graph_from_zone_images(config, {
-            "exterieur": str(images["entrée / extérieur"]),
-            "interieur": str(images["entrée / intérieur"]),
+            "exterieur": str(images["entry / exterior"]),
+            "interieur": str(images["entry / interior"]),
         })
-        print(f"[Module A] {len(entry_graph.nodes)} checkpoint(s) extrait(s) à l'entrée.")
+        print(f"[Module A] {len(entry_graph.nodes)} checkpoint(s) extracted at entry.")
 
-        print("[Module A] Extraction sortie (extérieur + intérieur)...")
+        print("[Module A] Exit extraction (exterior + interior)...")
         exit_graph = build_graph_from_zone_images(config, {
-            "exterieur": str(images["sortie / extérieur"]),
-            "interieur": str(images["sortie / intérieur"]),
+            "exterieur": str(images["exit / exterior"]),
+            "interieur": str(images["exit / interior"]),
         })
-        print(f"[Module A] {len(exit_graph.nodes)} checkpoint(s) extrait(s) à la sortie.")
+        print(f"[Module A] {len(exit_graph.nodes)} checkpoint(s) extracted at exit.")
 
-        print("[Module B] Comparaison entrée/sortie...")
+        print("[Module B] Entry/exit comparison...")
         edges = align(entry_graph, exit_graph)
         score = compute_confidence_score(edges)
-        print(f"[Module B] {len(edges)} checkpoint(s) comparé(s) — score de confiance global : {score:.2f}")
+        print(f"[Module B] {len(edges)} checkpoint(s) compared — global confidence score: {score:.2f}")
 
         grid = _load_grid(args.grid)
         legal_qualifications: Dict[str, LegalQualification] = {}
 
-        print("[Visualisation + Module D] Traitement des écarts détectés...")
+        print("[Visualization + Module D] Processing detected divergences...")
         Path(args.annotated_dir).mkdir(parents=True, exist_ok=True)
         for edge in edges:
             status = edge.status.value if hasattr(edge.status, "value") else str(edge.status)
@@ -126,7 +124,7 @@ def main() -> None:
 
             entry_node = entry_graph.get_node(edge.node_id)
             exit_node = exit_graph.get_node(edge.node_id)
-            print(f"  - {edge.node_id} : {status} (sévérité={edge.severity}, coût~{edge.estimated_cost_eur:.0f}€)")
+            print(f"  - {edge.node_id}: {status} (severity={edge.severity}, cost~{edge.estimated_cost_eur:.0f}€)")
             print(f"    {edge.reasoning}")
 
             if entry_node and exit_node and entry_node.image_path and exit_node.image_path:
@@ -136,7 +134,7 @@ def main() -> None:
                         entry_node=entry_node, exit_node=exit_node,
                     )
                 except (FileNotFoundError, OSError) as e:
-                    print(f"    (annotation visuelle impossible : {e})")
+                    print(f"    (visual annotation failed: {e})")
 
             legal_qualifications[edge.node_id] = qualify(
                 edge, args.occupancy_months,
@@ -144,7 +142,7 @@ def main() -> None:
                 grid=grid, entry_node=entry_node, exit_node=exit_node,
             )
 
-        print("[Module C] Génération du rapport PDF...")
+        print("[Module C] Generating PDF report...")
         output_path = build_report(
             entry_graph, exit_graph, edges, score, args.output_pdf,
             legal_qualifications=legal_qualifications,
@@ -152,11 +150,11 @@ def main() -> None:
             composites_dir=args.composites_dir,
         )
     except Exception as e:  # noqa: BLE001
-        print(f"[Pipeline véhicule] Échec : {e}\nVérifiez NVIDIA_API_KEY (export dans le terminal ou fichier .env).")
+        print(f"[Vehicle pipeline] Failed: {e}\nCheck NVIDIA_API_KEY (export in terminal or .env file).")
         sys.exit(1)
 
-    print(f"\n[Pipeline véhicule] Rapport généré -> {output_path}")
-    print(f"[Pipeline véhicule] Images annotées -> {args.annotated_dir}/")
+    print(f"\n[Vehicle pipeline] Report generated -> {output_path}")
+    print(f"[Vehicle pipeline] Annotated images -> {args.annotated_dir}/")
 
 
 if __name__ == "__main__":

@@ -1,12 +1,12 @@
 """
-Agent A — Nodes (Étape 3 + Étape 5 du plan de construction).
+Agent A — Nodes (build plan steps 3 + 5).
 
-build_node(image, checkpoint_id) -> Node :
-  - appelle le prompt de description d'état (agents.Agent_A.prompts)
-  - parse la réponse et la valide contre le schéma pydantic `NodeProperties`
-  - retry une fois avec l'erreur en contexte si le JSON est invalide
-  - fallback sur un Node "unknown"/confidence=0 plutôt que de planter le
-    pipeline pour un seul checkpoint raté (Étape 5 — robustesse).
+build_node(image, checkpoint_id) -> Node:
+  - calls the state-description prompt (agents.Agent_A.prompts)
+  - parses and validates the response against pydantic `NodeProperties`
+  - retries once with the error in context if JSON is invalid
+  - falls back to an "unknown"/confidence=0 Node rather than crashing the
+    pipeline for one failed checkpoint (step 5 — robustness).
 """
 
 from __future__ import annotations
@@ -50,12 +50,11 @@ def build_node(
     element_type: Optional[str] = None,
     llm: Optional[BaseLLMProvider] = None,
 ) -> Node:
-    """Décrit un checkpoint à partir d'une image et retourne un `Node` validé.
+    """Describe a checkpoint from an image and return a validated `Node`.
 
-    Ne lève jamais d'exception : en cas d'échec définitif du parsing/validation,
-    retourne un Node dégradé (`extraction_failed=True`, condition="unknown",
-    confidence=0.0) pour que `build_graph` puisse continuer sur les autres
-    checkpoints.
+    Never raises: on definitive parse/validation failure, returns a degraded
+    Node (`extraction_failed=True`, condition="unknown", confidence=0.0) so
+    `build_graph` can continue on other checkpoints.
     """
     llm = llm or _make_llm()
     node_id = f"{room}:{checkpoint_id}"
@@ -66,13 +65,13 @@ def build_node(
         user_message = base_prompt
         if attempt > 0 and last_error:
             user_message += (
-                f"\n\nATTENTION : ta réponse précédente était invalide "
-                f"({last_error}). Corrige et renvoie UNIQUEMENT le JSON attendu."
+                f"\n\nWARNING: your previous response was invalid "
+                f"({last_error}). Fix it and return ONLY the expected JSON."
             )
 
         raw = llm.invoke_for_json(user_message, image_paths=[image_path])
         if raw is None:
-            last_error = "réponse non parsable en JSON"
+            last_error = "response not parseable as JSON"
             continue
 
         try:
@@ -91,7 +90,7 @@ def build_node(
             extraction_failed=False,
         )
 
-    # Étape 5 — fallback : un checkpoint raté ne doit jamais faire planter tout le pipeline.
+    # Step 5 — fallback: one failed checkpoint must never crash the whole pipeline.
     return Node(
         id=node_id,
         checkpoint_id=checkpoint_id,
@@ -104,8 +103,8 @@ def build_node(
 
 
 def _clean_bbox_pct(raw_bbox) -> Optional[List[float]]:
-    """Même validation que côté Module B — une zone mal formée dégrade en
-    `None` plutôt que de faire échouer l'extraction du checkpoint."""
+    """Same validation as Module B — a malformed zone degrades to `None`
+    rather than failing checkpoint extraction."""
     if not isinstance(raw_bbox, (list, tuple)) or len(raw_bbox) != 4:
         return None
     try:
@@ -126,18 +125,17 @@ def build_nodes_from_image(
     room: str,
     llm: Optional[BaseLLMProvider] = None,
 ) -> List[Node]:
-    """Décrit PLUSIEURS checkpoints à partir d'UNE SEULE image (mode
-    multi-entités, ex : une photo d'extérieur de véhicule montrant pare-choc
-    + portière + jante + pare-brise en même temps).
+    """Describe SEVERAL checkpoints from ONE image (multi-entity mode, e.g. a
+    vehicle exterior photo showing bumper + door + wheel + windshield together).
 
-    Un seul appel VLM pour toute l'image (au lieu d'un appel par checkpoint) :
-    le modèle reçoit la liste des checkpoints attendus et doit répondre pour
-    chacun, avec sa propre `bbox_pct` de localisation dans l'image partagée.
+    One VLM call for the entire image (instead of one per checkpoint): the model
+    receives the list of expected checkpoints and must respond for each with its
+    own `bbox_pct` localization in the shared image.
 
-    Ne lève jamais d'exception : si l'appel global échoue ou si un
-    checkpoint précis manque/est mal formé dans la réponse, ce checkpoint
-    individuel dégrade en `Node` "unknown" (`extraction_failed=True`) sans
-    affecter les autres checkpoints de la même image.
+    Never raises: if the global call fails or a specific checkpoint is
+    missing/malformed in the response, that checkpoint degrades to an "unknown"
+    `Node` (`extraction_failed=True`) without affecting other checkpoints on
+    the same image.
     """
     llm = llm or _make_multi_llm()
     base_prompt = build_multi_checkpoint_prompt(checkpoints, room)
@@ -148,14 +146,14 @@ def build_nodes_from_image(
         user_message = base_prompt
         if attempt > 0 and last_error:
             user_message += (
-                f"\n\nATTENTION : ta réponse précédente était invalide "
-                f"({last_error}). Corrige et renvoie UNIQUEMENT le JSON attendu, "
-                "avec une clé par checkpoint_id demandé."
+                f"\n\nWARNING: your previous response was invalid "
+                f"({last_error}). Fix it and return ONLY the expected JSON, "
+                "with one key per requested checkpoint_id."
             )
 
         response = llm.invoke_for_json(user_message, image_paths=[image_path])
         if response is None or not isinstance(response, dict):
-            last_error = "réponse non parsable en JSON (objet attendu)"
+            last_error = "response not parseable as JSON (object expected)"
             continue
         raw = response
         break

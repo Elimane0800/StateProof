@@ -1,10 +1,9 @@
 """
-ARIA — Schémas partagés (le "contrat de données" entre les modules A, B, C, D).
+ARIA — Shared schemas (the "data contract" between modules A, B, C, D).
 
-Ce fichier doit être figé en premier : Module B ne dépend que de `Node`
-(produit par Module A), Module C ne dépend que de `AlignmentEdge` et `Node`,
-Module D ne dépend que de `AlignmentEdge`. Aucun module ne connaît les
-détails internes des autres — uniquement ces structures.
+This file should be frozen first: Module B depends only on `Node` (produced by
+Module A), Module C only on `AlignmentEdge` and `Node`, Module D only on
+`AlignmentEdge`. No module knows other modules' internals — only these structures.
 """
 
 from __future__ import annotations
@@ -16,23 +15,23 @@ from pydantic import BaseModel, Field
 
 
 # ---------------------------------------------------------------------------
-# Config des checkpoints (Module A — Étape 1)
-# Fichier statique JSON, ne dépend d'aucun LLM. Voir config/checkpoints.example.json
+# Checkpoint config (Module A — step 1)
+# Static JSON file, no LLM dependency. See config/checkpoints.example.json
 # ---------------------------------------------------------------------------
 
 class CheckpointDef(BaseModel):
-    """Un checkpoint = un élément physique à observer (un mur, un sol...)."""
+    """A checkpoint = one physical element to observe (a wall, floor...)."""
 
     id: str
     element_type: Optional[str] = None  # "mur", "sol", "prise_electrique"...
 
 
 class RoomConfig(BaseModel):
-    """Liste des checkpoints d'une pièce.
+    """Checkpoint list for one room.
 
-    Accepte soit une liste de chaînes simples (cf. exemple du brief),
-    soit une liste de `CheckpointDef` si on veut préciser `element_type`
-    explicitement plutôt que de le déduire du nom.
+    Accepts either a list of simple strings (cf. brief example) or a list of
+    `CheckpointDef` if you want to specify `element_type` explicitly rather than
+    inferring it from the name.
     """
 
     checkpoints: List[Union[str, CheckpointDef]]
@@ -48,7 +47,7 @@ class RoomConfig(BaseModel):
 
 
 class PropertyConfig(BaseModel):
-    """Le squelette fixe d'un bien : property_id + pièces + checkpoints."""
+    """Fixed skeleton for a property: property_id + rooms + checkpoints."""
 
     property_id: str
     rooms: Dict[str, RoomConfig]
@@ -62,7 +61,7 @@ class PropertyConfig(BaseModel):
 
 
 def _guess_element_type(checkpoint_id: str) -> Optional[str]:
-    """Heuristique simple si `element_type` n'est pas fourni explicitement."""
+    """Simple heuristic when `element_type` is not provided explicitly."""
     lowered = checkpoint_id.lower()
     guesses = {
         "mur": "mur",
@@ -85,11 +84,11 @@ def _guess_element_type(checkpoint_id: str) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
-# Node (Module A — Étape 2 & 3) — le contrat central de tout le pipeline
+# Node (Module A — steps 2 & 3) — central contract for the whole pipeline
 # ---------------------------------------------------------------------------
 
 class NodeProperties(BaseModel):
-    """Sortie JSON stricte du prompt de description d'état (une image)."""
+    """Strict JSON output of the state-description prompt (one image)."""
 
     material: Optional[str] = None
     color: Optional[str] = None
@@ -99,18 +98,17 @@ class NodeProperties(BaseModel):
 
 
 class Node(BaseModel):
-    """Un nœud du graphe = un checkpoint observé à un instant donné (entrée ou sortie).
+    """A graph node = one checkpoint observed at one moment (entry or exit).
 
-    `image_path` n'est PAS forcément unique par nœud : en mode multi-entités
-    (une photo contient plusieurs checkpoints, ex. une photo d'extérieur de
-    véhicule montrant pare-choc + portière + jante), plusieurs `Node` peuvent
-    partager la même image. `bbox_pct` localise alors CE checkpoint précis
-    à l'intérieur de cette image partagée (coordonnées normalisées
-    [x_min, y_min, x_max, y_max]), pour que le Module B sache où regarder
-    sans confondre les défauts de checkpoints voisins.
+    `image_path` is NOT necessarily unique per node: in multi-entity mode (one
+    photo contains several checkpoints, e.g. vehicle exterior showing bumper +
+    door + wheel), several `Node`s may share the same image. `bbox_pct` then
+    localizes THIS checkpoint inside that shared image (normalized coordinates
+    [x_min, y_min, x_max, y_max]) so Module B knows where to look without
+    confusing defects from neighboring checkpoints.
     """
 
-    id: str  # convention : "{room}:{checkpoint_id}"
+    id: str  # convention: "{room}:{checkpoint_id}"
     checkpoint_id: str
     room: str
     element_type: Optional[str] = None
@@ -122,7 +120,7 @@ class Node(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Graph (LPG) — arêtes structurelles, déterministes, zéro appel LLM
+# Graph (LPG) — structural edges, deterministic, zero LLM calls
 # ---------------------------------------------------------------------------
 
 class EdgeType(str, Enum):
@@ -148,8 +146,8 @@ class Graph(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# AlignmentEdge (Module B) — l'énumération `status` est figée dès maintenant,
-# tout le reste (couleurs Studio, filtres PDF) en dépend.
+# AlignmentEdge (Module B) — `status` enum is frozen now; everything else
+# (Studio colors, PDF filters) depends on it.
 # ---------------------------------------------------------------------------
 
 class AlignmentStatus(str, Enum):
@@ -167,9 +165,9 @@ class Severity(str, Enum):
 
 
 class AlignmentEdge(BaseModel):
-    """Résultat de la comparaison d'un même checkpoint entre entrée et sortie."""
+    """Result of comparing the same checkpoint between entry and exit."""
 
-    node_id: str  # "{room}:{checkpoint_id}", commun aux deux graphes
+    node_id: str  # "{room}:{checkpoint_id}", common to both graphs
     checkpoint_id: str
     room: str
     status: AlignmentStatus
@@ -177,26 +175,26 @@ class AlignmentEdge(BaseModel):
     confidence: float = 0.0
     reasoning: str = ""
     estimated_cost_eur: float = 0.0
-    comparison_failed: bool = False  # Étape 6 Module C : afficher "donnée non disponible"
-    # Zone de divergence localisée par le VLM, coordonnées normalisées [0,1]
-    # [x_min, y_min, x_max, y_max] sur l'image. None si status="unchanged" ou
-    # si le modèle n'a pas pu localiser précisément l'anomalie.
+    comparison_failed: bool = False  # Module C step 6: show "data not available"
+    # Divergence zone localized by VLM, normalized [0,1] coordinates
+    # [x_min, y_min, x_max, y_max] on the image. None if status="unchanged" or
+    # if the model could not localize precisely.
     bbox_pct: Optional[List[float]] = None
 
 
 # ---------------------------------------------------------------------------
-# Module D — qualification légale (vétusté vs usage anormal)
+# Module D — legal qualification (wear vs abnormal use)
 # ---------------------------------------------------------------------------
 
 class VetusteGridEntry(BaseModel):
-    """Une ligne de grille de vétusté contractuelle (annexée au bail)."""
+    """One row of a contractual wear grid (annexed to lease)."""
 
     duree_vie_ans: float
     franchise_ans: float
-    taux_annuel: float  # ex : 0.10 => 10 %/an d'abattement
+    taux_annuel: float  # e.g. 0.10 => 10%/year deduction
 
 
-VetusteGrid = Dict[str, VetusteGridEntry]  # clé = element_category
+VetusteGrid = Dict[str, VetusteGridEntry]  # key = element_category
 
 
 class LegalQualification(BaseModel):
@@ -209,13 +207,13 @@ class LegalQualification(BaseModel):
     reasoning: str = ""
     confidence: float = 0.0
     disclaimer: str = (
-        "Analyse indicative générée par IA, ne remplace pas une expertise "
-        "contradictoire ou un avis juridique."
+        "Indicative AI-generated analysis; does not replace contradictory "
+        "expertise or legal advice."
     )
 
 
 # ---------------------------------------------------------------------------
-# Module C — structures de rendu du rapport (préparées par prepare_report_data)
+# Module C — report render structures (prepared by prepare_report_data)
 # ---------------------------------------------------------------------------
 
 class SummaryRow(BaseModel):
@@ -247,7 +245,7 @@ class ReportData(BaseModel):
     exit_date: Optional[str] = None
     confidence_score: float = 0.0
     confidence_score_method: str = (
-        "Moyenne pondérée par sévérité sur l'ensemble des points de contrôle."
+        "Severity-weighted average across all checkpoints."
     )
     summary_rows: List[SummaryRow] = Field(default_factory=list)
     detailed_sections: List[DetailedSection] = Field(default_factory=list)
@@ -255,6 +253,6 @@ class ReportData(BaseModel):
     total_cost_eur: float = 0.0
     negotiation_points: List[str] = Field(default_factory=list)
     disclaimer: str = (
-        "Analyse indicative générée par IA, ne remplace pas une expertise "
-        "contradictoire ou un avis juridique."
+        "Indicative AI-generated analysis; does not replace contradictory "
+        "expertise or legal advice."
     )

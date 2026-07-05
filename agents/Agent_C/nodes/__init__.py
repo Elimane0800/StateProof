@@ -1,11 +1,10 @@
 """
-Agent C — Préparation des données (Étape 2) + composite d'images (Étape 4).
+Agent C — Data preparation (step 2) + image composite (step 4).
 
-prepare_report_data sépare volontairement la préparation des données du
-rendu : elle trie les edges par sévérité, calcule le total des coûts,
-regroupe les checkpoints "inchangé", et gère les trous (Étape 6 — un
-checkpoint dont l'image ou la classification manque devient
-`data_available=False`, jamais une exception).
+prepare_report_data deliberately separates data prep from rendering: it sorts
+edges by severity, computes total costs, groups "unchanged" checkpoints, and
+handles gaps (step 6 — a checkpoint missing image or classification becomes
+`data_available=False`, never an exception).
 """
 
 from __future__ import annotations
@@ -58,8 +57,8 @@ def prepare_report_data(
         room = reference_node.room
         checkpoint_id = reference_node.checkpoint_id
 
-        # Étape 6 — gérer les trous : image/classification manquante ou
-        # échec Module A/B -> ligne "donnée non disponible", jamais un crash.
+        # Step 6 — handle gaps: missing image/classification or Module A/B failure
+        # -> "data not available" row, never a crash.
         data_available = (
             entry_node is not None
             and exit_node is not None
@@ -88,7 +87,7 @@ def prepare_report_data(
 
         status = _enum_value(edge.status)
         if status == "unchanged":
-            # Regroupés, pas détaillés un par un.
+            # Grouped, not detailed one by one.
             unchanged.append(checkpoint_id)
             continue
 
@@ -113,7 +112,7 @@ def prepare_report_data(
 
         if status == "damage":
             negotiation_points.append(
-                f"{room} / {checkpoint_id} : {edge.reasoning} (~{edge.estimated_cost_eur:.0f} €)"
+                f"{room} / {checkpoint_id}: {edge.reasoning} (~{edge.estimated_cost_eur:.0f} €)"
             )
 
     summary_rows.sort(key=lambda r: (_SEVERITY_ORDER.get(r.severity, 9), -r.cost_eur))
@@ -137,14 +136,14 @@ def make_composite_image(
     entry_image_path: str,
     exit_image_path: str,
     output_path: str,
-    label_entry: str = "Entrée",
-    label_exit: str = "Sortie",
+    label_entry: str = "Entry",
+    label_exit: str = "Exit",
     target_height: int = 480,
 ) -> str:
-    """Étape 4 — une image composite "entrée | sortie" par checkpoint en écart.
+    """Step 4 — one composite "entry | exit" image per divergent checkpoint.
 
-    Une seule image = un seul `Image()` reportlab à placer côté rendu,
-    au lieu de deux flottants séparés mal alignés.
+    Single image = one reportlab `Image()` to place at render time, instead of
+    two poorly aligned separate floats.
     """
     entry_img = PILImage.open(entry_image_path).convert("RGB")
     exit_img = PILImage.open(exit_image_path).convert("RGB")

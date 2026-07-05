@@ -1,26 +1,22 @@
 """
-Agent B — Visualisation de la divergence détectée (debug / démo).
+Agent B — Visualization of detected divergence (debug / demo).
 
-Superpose un petit cercle très transparent EXACTEMENT là où la divergence a
-été détectée :
-  - VERT sur l'image d'ENTRÉE (l'état "avant", référence).
-  - ROUGE sur l'image de SORTIE (l'état "après", là où le problème apparaît).
+Overlays a small very transparent circle EXACTLY where divergence was detected:
+  - GREEN on the ENTRY image (the "before" reference state).
+  - RED on the EXIT image (the "after" state where the problem appears).
 
-La position n'est PAS prise telle quelle depuis `bbox_pct` du VLM (les VLM
-généralistes sont notoirement peu fiables pour pointer précisément — cf.
-`[0.1, 0.4, 0.9, 0.9]` qui couvre quasiment toute l'image). On calcule à la
-place un centroïde par DIFFÉRENCE D'IMAGE classique entre les deux photos
-(déterministe, zéro LLM, exact au pixel près) :
-  1. `bbox_pct` sert de zone de recherche grossière quand elle est crédible.
-  2. Sur les pixels les plus divergents (percentile élevé), on isole les
-     COMPOSANTES CONNEXES (flood-fill) plutôt qu'une simple moyenne globale :
-     un vrai défaut (rayure, trou, tache) forme un blob compact, alors que le
-     bruit ambiant (reflets de fenêtre, feuillage au loin, luminosité
-     changeante) se fragmente en petites taches éparses. On garde le plus
-     gros blob, ce qui écarte efficacement ce bruit.
+Position is NOT taken directly from VLM `bbox_pct` (generalist VLMs are notoriously
+unreliable for precise pointing — cf. `[0.1, 0.4, 0.9, 0.9]` covering almost
+the whole image). We instead compute a centroid by classic IMAGE DIFFERENCE
+between the two photos (deterministic, zero LLM, pixel-accurate):
+  1. `bbox_pct` serves as a coarse search zone when credible.
+  2. On the most divergent pixels (high percentile), we isolate CONNECTED
+     COMPONENTS (flood-fill) rather than a simple global mean: a real defect
+     (scratch, hole, stain) forms a compact blob, while ambient noise (window
+     reflections, distant foliage, changing brightness) fragments into small
+     scattered patches. We keep the largest blob, effectively filtering that noise.
 
-Zéro appel LLM ici — fonction pure de rendu/traitement d'image, à l'image du
-Module C.
+Zero LLM calls here — pure image render/processing function, like Module C.
 """
 
 from __future__ import annotations
@@ -34,34 +30,32 @@ from agents.common.schemas import AlignmentEdge, Node
 
 GREEN = (34, 197, 94)
 RED = (220, 38, 38)
-WATERMARK_ALPHA = 90  # sur 255 — "très transparent"
+WATERMARK_ALPHA = 90  # out of 255 — "very transparent"
 OUTLINE_ALPHA = 220
-# Rayon du cercle en fraction du plus petit côté de l'image — volontairement
-# petit et fixe, indépendant de la taille (souvent trop large) de bbox_pct.
+# Circle radius as a fraction of the shorter image side — deliberately small and
+# fixed, independent of (often too large) bbox_pct size.
 CIRCLE_RADIUS_RATIO = 0.035
 CIRCLE_MIN_RADIUS_PX = 14
 
-# Résolution de travail pour le calcul de différence (indépendante de la
-# résolution réelle des photos — suffisant pour localiser un centroïde).
+# Working resolution for difference computation (independent of actual photo
+# resolution — sufficient to localize a centroid).
 DIFF_WORK_SIZE = 300
 DIFF_BLUR_RADIUS = 1
-# Zone bbox_pct considérée comme "crédible" pour restreindre la recherche
-# (au-delà, le VLM n'a probablement rien localisé de précis -> on ignore).
+# bbox_pct zone considered "credible" to restrict search (beyond that, the VLM
+# probably localized nothing precise -> ignore).
 BBOX_MAX_CREDIBLE_AREA = 0.5
-# Le hint du Module A (localisation dédiée par checkpoint) est toléré plus
-# large : même imprécis, il reste préférable à une recherche sans restriction
-# en mode multi-entités (plusieurs checkpoints par photo).
+# Module A hint (per-checkpoint localization) is tolerated wider: even if imprecise,
+# it beats unrestricted search in multi-entity mode (several checkpoints per photo).
 NODE_HINT_CREDIBLE_AREA = 0.85
-# Marge ajoutée autour du hint du Module A avant de restreindre la recherche
-# (proportionnelle à la taille de la bbox), pour absorber un léger décalage
-# de cadrage entre les deux photos (angle, ou deux rendus générés séparément).
+# Margin added around the Module A hint before restricting search (proportional
+# to bbox size) to absorb slight framing offset between the two photos.
 NODE_HINT_PADDING = 0.12
-# On ne garde que les pixels les plus divergents (haut du percentile) pour
-# isoler le vrai défaut du bruit de fond (compression JPEG, grain, etc.).
+# Keep only the most divergent pixels (top percentile) to isolate the real
+# defect from background noise (JPEG compression, grain, etc.).
 TOP_PERCENTILE = 0.985
 MIN_ABS_THRESHOLD = 10
-# Une composante connexe plus petite que ça est considérée comme du bruit
-# isolé, pas un défaut réel.
+# A connected component smaller than this is considered isolated noise, not a
+# real defect.
 MIN_COMPONENT_SIZE = 8
 
 
@@ -75,8 +69,8 @@ def _load_font(size: int = 22) -> ImageFont.FreeTypeFont:
 
 
 def _connected_components(mask: List[int], width: int, height: int) -> List[List[int]]:
-    """Flood-fill 4-connexe sur un masque binaire aplati. Retourne la liste
-    des composantes, chacune étant une liste d'indices de pixels."""
+    """4-connected flood-fill on a flat binary mask. Returns the list of
+    components, each a list of pixel indices."""
     visited = [False] * len(mask)
     components: List[List[int]] = []
     for start in range(len(mask)):
@@ -104,19 +98,17 @@ def _difference_hotspot(
     exit_image_path: str,
     search_bbox: Optional[List[float]] = None,
 ) -> Optional[Tuple[float, float]]:
-    """Localise le plus gros blob de divergence entre les deux photos, par
-    différence d'image classique (zéro LLM).
+    """Locate the largest divergence blob between two photos by classic image
+    difference (zero LLM).
 
-    On travaille sur le maximum des 3 canaux couleur (plus sensible aux
-    taches/décolorations qu'un simple niveau de gris), on isole les pixels
-    les plus divergents (`TOP_PERCENTILE`), puis on regroupe ces pixels en
-    composantes connexes : un vrai défaut forme un blob compact, alors que
-    le bruit ambiant (reflets, luminosité changeante) se fragmente en petites
-    taches éparses qu'on écarte en gardant uniquement le plus gros blob.
+    Works on the max of 3 color channels (more sensitive to stains/discoloration
+    than simple grayscale), isolates the most divergent pixels (`TOP_PERCENTILE`),
+    then groups them into connected components: a real defect forms a compact blob,
+    while ambient noise fragments into small scattered patches we discard by keeping
+    only the largest blob.
 
-    Retourne des coordonnées normalisées (x_pct, y_pct), ou None si les
-    images sont indisponibles ou si aucun blob significatif n'émerge
-    (cas "unchanged" ou photos non comparables).
+    Returns normalized coordinates (x_pct, y_pct), or None if images are unavailable
+    or no significant blob emerges ("unchanged" or non-comparable photos).
     """
     try:
         entry_img = Image.open(entry_image_path).convert("RGB")
@@ -187,10 +179,8 @@ def _is_credible_bbox(bbox: Optional[List[float]], max_area: float = BBOX_MAX_CR
 
 
 def _pad_bbox(bbox: List[float], margin_ratio: float = NODE_HINT_PADDING) -> List[float]:
-    """Élargit légèrement une bbox (marge proportionnelle à sa propre taille),
-    pour tolérer un léger décalage entre les deux photos (angle, cadrage,
-    ou deux rendus générés séparément et pas parfaitement superposables) sans
-    perdre le bénéfice de la restriction par checkpoint."""
+    """Slightly expand a bbox (margin proportional to its size) to tolerate
+    slight offset between the two photos without losing per-checkpoint restriction."""
     x0, y0, x1, y1 = bbox
     pad_x = (x1 - x0) * margin_ratio
     pad_y = (y1 - y0) * margin_ratio
@@ -201,9 +191,8 @@ def _pad_bbox(bbox: List[float], margin_ratio: float = NODE_HINT_PADDING) -> Lis
 
 
 def _merge_bbox(a: Optional[List[float]], b: Optional[List[float]]) -> Optional[List[float]]:
-    """Union de deux bbox (utile quand l'entrée et la sortie ont chacune leur
-    propre localisation du Module A) : on élargit plutôt que de choisir
-    arbitrairement l'une des deux."""
+    """Union of two bboxes (useful when entry and exit each have their own
+    Module A localization): expand rather than arbitrarily pick one."""
     if a and b:
         return [min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3])]
     return a or b
@@ -213,21 +202,16 @@ def _pick_search_bbox(
     node_bbox_hint: Optional[List[float]],
     edge_bbox_pct: Optional[List[float]],
 ) -> Optional[List[float]]:
-    """Zone de recherche à utiliser pour la différence d'image.
+    """Search zone for image difference.
 
-    Priorité au bbox établi par le Module A (`node_bbox_hint`) : il localise
-    CE checkpoint précis indépendamment de la comparaison, ce qui est
-    indispensable quand plusieurs checkpoints partagent la même photo (ex :
-    pare-choc + portière + jante sur une même image d'extérieur de
-    véhicule) — sans ça, la différence globale peut accrocher le défaut d'un
-    élément voisin, voire du bruit de rendu sans rapport (ombre, reflet).
+    Prefer bbox from Module A (`node_bbox_hint`): it localizes THIS checkpoint
+    independently of comparison, essential when several checkpoints share one
+    photo (e.g. bumper + door + wheel on the same exterior image) — without it,
+    global difference may latch onto a neighbor's defect or unrelated render noise.
 
-    Le hint du Module A est toléré avec une marge plus large
-    (`NODE_HINT_CREDIBLE_AREA`) que le bbox de comparaison : il vient d'une
-    localisation dédiée par checkpoint (donc plus fiable a priori), et une
-    zone connue même imparfaite reste toujours préférable à une recherche
-    sur l'image entière en mode multi-entités. Une petite marge de tolérance
-    (`_pad_bbox`) absorbe un léger décalage de cadrage entre les deux photos.
+    Module A hint is tolerated with a wider margin (`NODE_HINT_CREDIBLE_AREA`)
+    than comparison bbox: it comes from dedicated per-checkpoint localization.
+    Small padding (`_pad_bbox`) absorbs slight framing offset between photos.
     """
     if _is_credible_bbox(node_bbox_hint, max_area=NODE_HINT_CREDIBLE_AREA):
         return _pad_bbox(node_bbox_hint)
@@ -242,7 +226,7 @@ def _resolve_location(
     edge: AlignmentEdge,
     node_bbox_hint: Optional[List[float]] = None,
 ) -> Optional[Tuple[float, float]]:
-    """Point (x_pct, y_pct) où placer le cercle, ou None si rien à localiser."""
+    """Point (x_pct, y_pct) where to place the circle, or None if nothing to localize."""
     status_value = edge.status.value if hasattr(edge.status, "value") else str(edge.status)
     if status_value == "unchanged":
         return None
@@ -252,8 +236,7 @@ def _resolve_location(
     if hotspot is not None:
         return hotspot
 
-    # Repli : le centre de la meilleure bbox connue reste mieux qu'aucune
-    # indication, si l'une d'elles est disponible.
+    # Fallback: center of best known bbox is still better than no indication.
     fallback_bbox = search_bbox or edge.bbox_pct
     if fallback_bbox:
         x_min, y_min, x_max, y_max = fallback_bbox
@@ -288,8 +271,8 @@ def _draw_watermark(
         )
         text_pos = (max(0, center_x - radius), max(0, center_y - radius - font.size - 10))
     else:
-        # Pas de localisation possible (status="unchanged" ou différence non
-        # détectable) : simple liseré coloré autour de l'image, pas de zone remplie.
+        # No localization possible (status="unchanged" or undetectable difference):
+        # simple colored border around the image, no filled zone.
         draw.rectangle([0, 0, base.width - 1, base.height - 1],
                         outline=color + (OUTLINE_ALPHA,), width=max(4, base.width // 150))
         text_pos = (12, 12)
@@ -314,19 +297,17 @@ def annotate_divergence(
     entry_node: Optional[Node] = None,
     exit_node: Optional[Node] = None,
 ) -> Tuple[str, str]:
-    """Écrit deux images annotées dans `output_dir` :
-    `{checkpoint_id}_avant.jpg` (vert) et `{checkpoint_id}_apres.jpg` (rouge).
+    """Write two annotated images in `output_dir`:
+    `{checkpoint_id}_avant.jpg` (green) and `{checkpoint_id}_apres.jpg` (red).
 
-    La position du cercle est calculée par différence d'image entre les deux
-    photos (voir `_resolve_location`), pas prise telle quelle depuis le VLM.
+    Circle position is computed by image difference between the two photos (see
+    `_resolve_location`), not taken directly from the VLM.
 
-    `entry_node`/`exit_node` (optionnels) fournissent le `bbox_pct` établi
-    par le Module A : indispensable en mode multi-entités (plusieurs
-    checkpoints partageant la même photo) pour cibler le bon élément parmi
-    plusieurs visibles sur l'image, plutôt que de risquer d'accrocher le
-    défaut d'un checkpoint voisin.
+    Optional `entry_node`/`exit_node` provide Module A `bbox_pct`: essential in
+    multi-entity mode (several checkpoints sharing one photo) to target the right
+    element among several visible on the image.
 
-    Retourne (chemin_avant, chemin_apres).
+    Returns (entry_path, exit_path).
     """
     status_label = edge.status.value if hasattr(edge.status, "value") else str(edge.status)
     node_bbox_hint = _merge_bbox(
@@ -338,7 +319,7 @@ def annotate_divergence(
     entry_out = os.path.join(output_dir, f"{edge.checkpoint_id}_avant.jpg")
     exit_out = os.path.join(output_dir, f"{edge.checkpoint_id}_apres.jpg")
 
-    _draw_watermark(entry_image_path, entry_out, location, GREEN, "AVANT (référence)")
-    _draw_watermark(exit_image_path, exit_out, location, RED, f"APRÈS — {status_label}")
+    _draw_watermark(entry_image_path, entry_out, location, GREEN, "BEFORE (reference)")
+    _draw_watermark(exit_image_path, exit_out, location, RED, f"AFTER — {status_label}")
 
     return entry_out, exit_out

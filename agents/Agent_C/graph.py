@@ -1,15 +1,14 @@
 """
-Agent C — Génération automatique du PDF (Étapes 1, 3, 4, 5, 6).
+Agent C — Automatic PDF generation (steps 1, 3, 4, 5, 6).
 
-Zéro appel LLM dans ce module : il ne connaît que la FORME de `AlignmentEdge`
-et de `Node` (via `ReportData`, préparé par agents.Agent_C.nodes.prepare_report_data),
-jamais comment ils ont été calculés.
+Zero LLM calls in this module: it only knows the SHAPE of `AlignmentEdge` and
+`Node` (via `ReportData`, prepared by agents.Agent_C.nodes.prepare_report_data),
+never how they were computed.
 
-Ordre de code recommandé : squelette du document (1, sur papier) -> render_pdf
-avec données mockées (3) -> prepare_report_data (2) -> composite d'images (4)
--> présentation du score (5) -> robustesse sur les trous (6).
-On code le rendu avant la préparation des données réelles : on isole et
-teste la brique risquée (la mise en page) avant de la brancher sur le reste.
+Recommended code order: document skeleton (1, on paper) -> render_pdf with mocked
+data (3) -> prepare_report_data (2) -> image composite (4) -> score presentation
+(5) -> gap robustness (6). Code rendering before real data prep: isolate and test
+the risky brick (layout) before wiring the rest.
 """
 
 from __future__ import annotations
@@ -66,38 +65,38 @@ def _styles() -> Dict[str, ParagraphStyle]:
 
 
 # ---------------------------------------------------------------------------
-# Étape 1 — squelette du document, section par section
+# Step 1 — document skeleton, section by section
 # ---------------------------------------------------------------------------
 
 def _cover_page(report: ReportData, styles: Dict[str, ParagraphStyle]) -> list:
     elements = []
     elements.append(Spacer(1, 3 * cm))
-    elements.append(Paragraph("Constat d'état des lieux comparatif", styles["title"]))
+    elements.append(Paragraph("Comparative condition report", styles["title"]))
     elements.append(Spacer(1, 0.5 * cm))
     elements.append(Paragraph(report.address or report.property_id, styles["body"]))
     elements.append(Paragraph(
-        f"Entrée : {report.entry_date or '—'}   |   Sortie : {report.exit_date or '—'}",
+        f"Entry: {report.entry_date or '—'}   |   Exit: {report.exit_date or '—'}",
         styles["body"],
     ))
     elements.append(Spacer(1, 2 * cm))
 
-    # Étape 5 — grand chiffre + phrase de méthode, sans fausse précision.
+    # Step 5 — large figure + methodology sentence, no false precision.
     score_pct = round(report.confidence_score * 100)
-    elements.append(Paragraph("Score de confiance global", styles["h3"]))
+    elements.append(Paragraph("Global confidence score", styles["h3"]))
     elements.append(Spacer(1, 0.3 * cm))
     elements.append(Paragraph(f"{score_pct}%", styles["score"]))
     elements.append(Spacer(1, 0.3 * cm))
     elements.append(Paragraph(report.confidence_score_method + " " + CONFIDENCE_SCORE_CAPTION, styles["small"]))
     elements.append(Spacer(1, 1 * cm))
-    elements.append(Paragraph(f"Coût total estimé des écarts : {report.total_cost_eur:.0f} €", styles["h3"]))
+    elements.append(Paragraph(f"Estimated total cost of divergences: {report.total_cost_eur:.0f} €", styles["h3"]))
     elements.append(PageBreak())
     return elements
 
 
 def _summary_table(report: ReportData, styles: Dict[str, ParagraphStyle]) -> list:
-    elements = [Paragraph("Table de synthèse", styles["h2"])]
+    elements = [Paragraph("Summary table", styles["h2"])]
 
-    header = ["Pièce", "Checkpoint", "Statut", "Sévérité", "Coût estimé"]
+    header = ["Room", "Checkpoint", "Status", "Severity", "Est. cost"]
     data = [header]
     for row in report.summary_rows:
         if not row.data_available:
@@ -129,7 +128,7 @@ def _summary_table(report: ReportData, styles: Dict[str, ParagraphStyle]) -> lis
     if report.unchanged_checkpoints:
         elements.append(Spacer(1, 0.4 * cm))
         elements.append(Paragraph(
-            f"{len(report.unchanged_checkpoints)} checkpoint(s) inchangé(s), non détaillés : "
+            f"{len(report.unchanged_checkpoints)} unchanged checkpoint(s), not detailed: "
             + ", ".join(report.unchanged_checkpoints),
             styles["small"],
         ))
@@ -138,7 +137,7 @@ def _summary_table(report: ReportData, styles: Dict[str, ParagraphStyle]) -> lis
 
 
 def _detailed_sections(report: ReportData, styles: Dict[str, ParagraphStyle]) -> list:
-    elements = [Paragraph("Détail des écarts", styles["h2"])]
+    elements = [Paragraph("Divergence details", styles["h2"])]
 
     for section in report.detailed_sections:
         elements.append(Paragraph(f"{section.room} — {section.checkpoint_id}", styles["h3"]))
@@ -152,18 +151,18 @@ def _detailed_sections(report: ReportData, styles: Dict[str, ParagraphStyle]) ->
         if image_path and os.path.exists(image_path):
             elements.append(Image(image_path, width=16 * cm, height=16 * cm * 0.4))
         elif section.entry_image_path and section.exit_image_path:
-            elements.append(Paragraph("(entrée)  |  (sortie) — composite non généré", styles["small"]))
+            elements.append(Paragraph("(entry)  |  (exit) — composite not generated", styles["small"]))
 
         elements.append(Spacer(1, 0.2 * cm))
-        elements.append(Paragraph(f"<b>Raisonnement :</b> {section.reasoning}", styles["body"]))
-        elements.append(Paragraph(f"<b>Coût estimé :</b> {section.cost_eur:.0f} €", styles["body"]))
+        elements.append(Paragraph(f"<b>Reasoning:</b> {section.reasoning}", styles["body"]))
+        elements.append(Paragraph(f"<b>Estimated cost:</b> {section.cost_eur:.0f} €", styles["body"]))
 
         if section.legal:
             legal = section.legal
             elements.append(Paragraph(
-                f"<b>Qualification légale :</b> {legal.legal_qualification} — "
-                f"responsabilité : {legal.responsibility}"
-                + (f" — abattement vétusté : {legal.abattement_pct:.0f}%" if legal.abattement_pct else ""),
+                f"<b>Legal qualification:</b> {legal.legal_qualification} — "
+                f"responsibility: {legal.responsibility}"
+                + (f" — wear deduction: {legal.abattement_pct:.0f}%" if legal.abattement_pct else ""),
                 styles["body"],
             ))
             elements.append(Paragraph(f"<i>{legal.reasoning}</i>", styles["small"]))
@@ -176,11 +175,11 @@ def _detailed_sections(report: ReportData, styles: Dict[str, ParagraphStyle]) ->
 
 
 def _negotiation_summary(report: ReportData, styles: Dict[str, ParagraphStyle]) -> list:
-    elements = [Paragraph("Synthèse des points de négociation", styles["h2"])]
-    elements.append(Paragraph(f"Total : {report.total_cost_eur:.0f} €", styles["h3"]))
+    elements = [Paragraph("Negotiation points summary", styles["h2"])]
+    elements.append(Paragraph(f"Total: {report.total_cost_eur:.0f} €", styles["h3"]))
 
     if not report.negotiation_points:
-        elements.append(Paragraph("Aucun point de négociation identifié.", styles["body"]))
+        elements.append(Paragraph("No negotiation points identified.", styles["body"]))
     else:
         for point in report.negotiation_points:
             elements.append(Paragraph(f"• {point}", styles["body"]))
@@ -192,8 +191,8 @@ def _negotiation_summary(report: ReportData, styles: Dict[str, ParagraphStyle]) 
 
 
 def render_pdf(report_data: ReportData, output_path: str) -> str:
-    """Rendu pur : parcourt `report_data`, ne calcule rien. Testable avec des
-    données mockées, sans jamais appeler le Module B."""
+    """Pure rendering: walks `report_data`, computes nothing. Testable with mocked
+    data without ever calling Module B."""
     styles = _styles()
     doc = SimpleDocTemplate(
         output_path, pagesize=A4,
@@ -222,7 +221,7 @@ def build_report(
     exit_date: Optional[str] = None,
     composites_dir: Optional[str] = None,
 ) -> str:
-    """Pipeline complet : prepare_report_data -> composites (Étape 4) -> render_pdf."""
+    """Full pipeline: prepare_report_data -> composites (step 4) -> render_pdf."""
     report_data = prepare_report_data(
         entry_graph, exit_graph, edges, confidence_score,
         legal_qualifications=legal_qualifications,
@@ -239,14 +238,13 @@ def build_report(
                         os.path.join(composites_dir, f"{section.room}_{section.checkpoint_id}.jpg"),
                     )
                 except (FileNotFoundError, OSError):
-                    section.composite_image_path = None  # Étape 6 : le rendu gère l'absence gracieusement
+                    section.composite_image_path = None  # Step 6: render handles absence gracefully
 
     return render_pdf(report_data, output_path)
 
 
 if __name__ == "__main__":
-    # Étape 3 — valider la mise en page avec des données 100% mockées,
-    # zéro dépendance sur les Modules A et B.
+    # Step 3 — validate layout with 100% mocked data, zero dependency on Modules A and B.
     from agents.common.schemas import DetailedSection, SummaryRow
 
     mock_report = ReportData(
@@ -261,14 +259,14 @@ if __name__ == "__main__":
             SummaryRow(checkpoint_id="prise_electrique", room="salon", status="—", severity="—", cost_eur=0, data_available=False),
         ],
         detailed_sections=[
-            DetailedSection(checkpoint_id="mur_nord", room="salon", reasoning="Impact localisé incompatible avec un vieillissement normal.", cost_eur=45),
-            DetailedSection(checkpoint_id="sol", room="chambre", reasoning="Usure diffuse cohérente avec la durée d'occupation.", cost_eur=0),
+            DetailedSection(checkpoint_id="mur_nord", room="salon", reasoning="Localized impact incompatible with normal aging.", cost_eur=45),
+            DetailedSection(checkpoint_id="sol", room="chambre", reasoning="Diffuse wear consistent with occupancy duration.", cost_eur=0),
             DetailedSection(checkpoint_id="prise_electrique", room="salon", reasoning="", cost_eur=0, data_available=False),
         ],
         unchanged_checkpoints=["mur_sud", "fenetre"],
         total_cost_eur=45,
-        negotiation_points=["salon / mur_nord : Impact localisé incompatible avec un vieillissement normal. (~45 €)"],
+        negotiation_points=["salon / mur_nord: Localized impact incompatible with normal aging. (~45 €)"],
     )
 
     render_pdf(mock_report, "rapport_mock.pdf")
-    print("PDF mock généré : rapport_mock.pdf")
+    print("Mock PDF generated: rapport_mock.pdf")

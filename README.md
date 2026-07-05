@@ -1,13 +1,13 @@
 ﻿# StateProof
 
-> **StateProof** ÔÇö *"Proof of how it was."*
+> **StateProof** — *"Proof of how it was."*
 > AI condition auditing for everything you hand back. Built on the SynchronAIse
 > drift-audit engine (RAISE Hackathon 2026, Cursor Track).
 
 ## The problem
 
 Everyone has stood at a rental-car return desk being shown a scratch they're sure was
-already there. Surprise damage charges are the #1 car-rental complaint worldwide ÔÇö and
+already there. Surprise damage charges are the #1 car-rental complaint worldwide — and
 the same "damage vs wear vs already-agreed" fight covers everything humans hand back:
 apartments and deposits, leased equipment, Airbnbs, offices.
 
@@ -21,39 +21,39 @@ exactly what our Taste Engine classifies:
 | Was it an agreed change? (approval on file) | `agreed_change` | `intentional_evolution` |
 
 The `normal_wear` class is the differentiator: a dumb scanner flags every pixel
-difference; StateProof explains *why* the stone-chip dust is not chargeable ÔÇö with the
+difference; StateProof explains *why* the stone-chip dust is not chargeable — with the
 wear-and-tear standard cited.
 
 ## How it works
 
-1. **Pickup:** photograph the car ÔåÆ the VLM fills a **fixed condition checklist**
-   (front bumper, hood, windshield, doors, wheels, rear) ÔåÆ the baseline graph.
-2. **Return:** photograph again ÔåÆ the return graph. Fixed checklist means both graphs
-   align by construction ÔÇö the diff engine works unchanged.
+1. **Pickup:** photograph the car → the VLM fills a **fixed condition checklist**
+   (front bumper, hood, windshield, doors, wheels, rear) → the baseline graph.
+2. **Return:** photograph again → the return graph. Fixed checklist means both graphs
+   align by construction — the diff engine works unchanged.
 3. **Audit:** the engine diffs the graphs and classifies every difference with visible
    reasoning, a cited standard, and an indicative cost.
-4. **Output:** an itemized **StateProof Report**, a **Damage Charge Score** (Ôé¼ at
+4. **Output:** an itemized **StateProof Report**, a **Damage Charge Score** (€ at
    stake), and a one-click **dispute letter** / **charge notice**.
 
 **The Asset Registry:** conditions are keyed to the **license plate**, not the
 contract. Every event (pickup, return) appends a sealed snapshot, and each audit diffs
-against the *registered* baseline ÔÇö so a pre-existing scratch can never be charged
+against the *registered* baseline — so a pre-existing scratch can never be charged
 twice. The VLM reads the plate straight off the photo and auto-links the audit.
 
 ## Architecture (inherited from SynchronAIse)
 
-- **Contract** ÔÇö shared JSON payload driving backend, Studio, and metrics
-- **Backend** ÔÇö FastAPI (`POST /audit`, `GET /report/{id}`, `POST /fix`), classifier
-  fallback chain Gemini ÔåÆ OpenAI ÔåÆ deterministic heuristic, MOCK_MODE for offline demos
-- **Studio** ÔÇö React + react-flow dual-graph viewer: Pickup vs Return, node coloring by
+- **Contract** — shared JSON payload driving backend, Studio, and metrics
+- **Backend** — FastAPI (`POST /audit`, `GET /report/{id}`, `POST /fix`), classifier
+  fallback chain Gemini → OpenAI → deterministic heuristic, MOCK_MODE for offline demos
+- **Studio** — React + react-flow dual-graph viewer: Pickup vs Return, node coloring by
   classification, evidence panel, Damage Charge Score
-- **Demo data** ÔÇö one car, four dispute cases (new dent, pre-registered scratch, wear
+- **Demo data** — one car, four dispute cases (new dent, pre-registered scratch, wear
   dust, approved tire swap) with authored ground-truth graphs
 
 ## Roadmap
 
 - Apartments & deposits via per-asset-class checklist templates
-- Equipment leasing, Airbnb, insurance claims ÔÇö "everything humans hand back"
+- Equipment leasing, Airbnb, insurance claims — "everything humans hand back"
 - Persistent registry (real DB), rebaseline-on-renewal, timeline diffing
 - Photogrammetry / LiDAR capture beyond single photos
 
@@ -68,8 +68,8 @@ people must know immediately. **Only the Integrator merges to `main`.**
 | Person | Track | Branch | Primary deliverable |
 |--------|-------|--------|---------------------|
 | _assign_ | Integration | `feat/integration` | Port SynchronAIse, keep `main` green, wire live demo |
-| _assign_ | Backend ÔÇö API | `feat/backend-api` | Parsers, registry, `/audit` routes |
-| _assign_ | Backend ÔÇö AI | `feat/backend-ai` | Schema, classifier, VLM/NIM chain |
+| _assign_ | Backend — API | `feat/backend-api` | Parsers, registry, `/audit` routes |
+| _assign_ | Backend — AI | `feat/backend-ai` | Schema, classifier, VLM/NIM chain |
 | _assign_ | Frontend | `feat/frontend` | Studio re-skin (Pickup / Return UI) |
 | _assign_ | Demo + deploy | `feat/demo` / `feat/deploy-k3s` | Car photos, ground-truth JSONs, k3s stretch |
 
@@ -84,9 +84,9 @@ Full timeline and git rules: [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md).
 Everything under `backend/` and `packages/contract/`. Frontend must not edit these
 paths; it only consumes types from `frontend/src/types/contract.ts`.
 
-### Backend ÔÇö AI & schema
+### Backend — AI & schema
 
-**Branch:** `feat/backend-ai` ┬À **Critical path ÔÇö schema on `main` by T+1:00**
+**Branch:** `feat/backend-ai` · **Critical path — schema on `main` by T+1:00**
 
 | Task | File(s) |
 |------|---------|
@@ -95,18 +95,18 @@ paths; it only consumes types from `frontend/src/types/contract.ts`.
 | Classification aliases: `damage`, `normal_wear`, `agreed_change` | `backend/app/core/schema.py` |
 | Wear-and-tear taxonomy prompt (scratch thresholds, chip counts) | `backend/**/classification.md` |
 | Heuristic fallback so MOCK_MODE stays coherent | `backend/app/services/classifier.py` |
-| NVIDIA NIM as first provider, then Gemini ÔåÆ OpenAI ÔåÆ heuristic | `backend/app/services/vlm.py`, `config.py` |
+| NVIDIA NIM as first provider, then Gemini → OpenAI → heuristic | `backend/app/services/vlm.py`, `config.py` |
 
 **Do not touch:** parsers, `storage.py` registry, `frontend/`.
 
 **Also deliver:** mirror types in `frontend/src/types/contract.ts` (or hand off to
-Frontend once stable ÔÇö agree at kickoff).
+Frontend once stable — agree at kickoff).
 
 ---
 
-### Backend ÔÇö API & registry
+### Backend — API & registry
 
-**Branch:** `feat/backend-api` ┬À **Mock path T+2:00, live VLM T+3:00**
+**Branch:** `feat/backend-api` · **Mock path T+2:00, live VLM T+3:00**
 
 | Task | File(s) |
 |------|---------|
@@ -120,22 +120,22 @@ Frontend once stable ÔÇö agree at kickoff).
 
 **Do not touch:** `schema.py`, classifier heuristic, `frontend/`, `demo/` photos.
 
-**Depends on:** schema from Backend ÔÇö AI (T+1:00), JSONs from Demo track (T+2:00).
+**Depends on:** schema from Backend — AI (T+1:00), JSONs from Demo track (T+2:00).
 
 ---
 
 ## Frontend track (1 person)
 
-Everything under `frontend/src/`. Work from seeded mocks ÔÇö you only need stable
+Everything under `frontend/src/`. Work from seeded mocks — you only need stable
 TypeScript types, not a live backend.
 
-**Branch:** `feat/frontend` ┬À **Done by T+3:00**
+**Branch:** `feat/frontend` · **Done by T+3:00**
 
 | Task | File(s) |
 |------|---------|
 | StateProof branding + tagline in header | `App.tsx`, `Studio.tsx` |
 | Relabel panels: **Pickup** vs **Return** | `Studio.tsx`, `GraphView.tsx` |
-| Drift score ÔåÆ **Damage Charge Score** (Ôé¼) | `DriftScore.tsx` |
+| Drift score → **Damage Charge Score** (€) | `DriftScore.tsx` |
 | License plate in asset header | `Studio.tsx` |
 | Photo evidence, reasoning, standard, cost | `ExplanationPanel.tsx` |
 | "Generate dispute letter" / "Generate charge notice" | `PromptBox.tsx` |
@@ -143,7 +143,7 @@ TypeScript types, not a live backend.
 
 **Do not touch:** `backend/`, `packages/contract/`, `demo/`.
 
-**Depends on:** `contract.ts` from Backend ÔÇö AI (T+1:00).
+**Depends on:** `contract.ts` from Backend — AI (T+1:00).
 
 ---
 
@@ -151,23 +151,23 @@ TypeScript types, not a live backend.
 
 Photos and ground truth. Minimal application code.
 
-**Branch:** `feat/demo` ┬À **JSONs ready by T+2:00**
+**Branch:** `feat/demo` · **JSONs ready by T+2:00**
 
 | Task | Output |
 |------|--------|
 | Pickup + return photo sets, plate visible, consistent angles | `demo/ground-truth/photos/` |
 | Pre-existing scratch pair (live demo case) | same |
-| Ground-truth JSON ÔÇö new dent ÔåÆ `damage` | `demo/ground-truth/` |
-| Ground-truth JSON ÔÇö registered scratch ÔåÆ not chargeable | same |
-| Ground-truth JSON ÔÇö stone-chip dust ÔåÆ `normal_wear` | same |
-| Ground-truth JSON ÔÇö approved tire swap ÔåÆ `agreed_change` | same |
+| Ground-truth JSON — new dent → `damage` | `demo/ground-truth/` |
+| Ground-truth JSON — registered scratch → not chargeable | same |
+| Ground-truth JSON — stone-chip dust → `normal_wear` | same |
+| Ground-truth JSON — approved tire swap → `agreed_change` | same |
 
 **Stretch (T+3:00 only, branch `feat/deploy-k3s`):** port Helm chart + deploy scripts
 from SynchronAIse, rename to `stateproof`. Only if live VLM works; otherwise skip.
 
 **Do not touch:** `backend/`, `frontend/`, `packages/`.
 
-**Depends on:** schema shape from Backend ÔÇö AI (T+1:00).
+**Depends on:** schema shape from Backend — AI (T+1:00).
 
 ---
 
@@ -177,40 +177,73 @@ from SynchronAIse, rename to `stateproof`. Only if live VLM works; otherwise ski
 
 | When | Task |
 |------|------|
-| **T+0:00ÔÇô0:30** | Port `packages/contract/`, `backend/`, `frontend/` from SynchronAIse. MOCK_MODE green. **Merge to `main` within 30 min.** |
-| **T+0:30ÔÇô3:00** | Merge backend + frontend + demo branches; resolve conflicts; smoke after each merge |
-| **T+3:00** | Wire live demo: photo ÔåÆ plate ÔåÆ registry ÔåÆ "scratch not chargeable" |
-| **T+3:30ÔÇô4:00** | End-to-end smoke test; tag clean commit |
+| **T+0:00–0:30** | Port `packages/contract/`, `backend/`, `frontend/` from SynchronAIse. MOCK_MODE green. **Merge to `main` within 30 min.** |
+| **T+0:30–3:00** | Merge backend + frontend + demo branches; resolve conflicts; smoke after each merge |
+| **T+3:00** | Wire live demo: photo → plate → registry → "scratch not chargeable" |
+| **T+3:30–4:00** | End-to-end smoke test; tag clean commit |
 
 You are the **only person who merges to `main`** during the build.
 
 ---
 
-## Quick start
+## Quick start — run locally
+
+### Prerequisites
+
+- **Node.js** 18+
+- **Python** 3.12
+- **Git**
+- **uv** (optional, recommended for the root ARIA engine scripts)
+
+### Backend
 
 ```powershell
-git fetch origin
-git checkout main
-git pull
-
-# Integrator first:
-git checkout feat/integration
-
-# Everyone else, after bootstrap is on main:
-git checkout feat/<track-branch>   # integration | backend-ai | backend-api | frontend | demo
-git rebase main
+cd backend
+copy .env.example .env
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
 ```
 
-**Backend env** (`backend/.env`): at least one of `NVIDIA_API_KEY`, `GEMINI_API_KEY`,
-`OPENAI_API_KEY` (MOCK_MODE works with zero keys).
+The API listens on `http://localhost:8000`. Health check: `GET /health`.
 
-**Frontend env:** `npm install` in `frontend/`, then `npm run dev`.
+### Frontend
 
+```powershell
+cd frontend
+npm install
+npm run dev
+```
 
+Vite usually serves on `http://localhost:5173`; if that port is taken, it picks the next free port (5174, 5175, …). Check the terminal output.
 
-## Moteur source (engine)
+### Environment variables
 
-Le code Python a la racine de cette branche (`agents/`, `scripts/`, `config/`) est le
-**moteur d'origine** (pipeline agentique A/B/C/D, `bbox_pct`, detection multi-entites,
-annotation par difference de pixels) a porter/adapter dans `backend/` selon le plan
-ci-dessus. Details complets : [ENGINE_README.md](ENGINE_README.md).
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `MOCK_MODE` | `backend/.env` | When `1` (or no API keys), `GET /report/{id}` serves fixtures from `demo/ground-truth/` via `demo_loader` |
+| `NVIDIA_API_KEY` | `backend/.env` | Required for live `POST /inspection/return` (ARIA pipeline via `aria_adapter`) |
+| `VITE_API_URL` | `frontend/.env` (optional) | Backend origin for API calls (default `http://localhost:8000`) |
+| `CORS_ORIGINS` | `backend/.env` | Comma-separated Studio origins (must include your Vite dev URL) |
+
+### Demo flows
+
+1. **Intake (default route)** — open `http://localhost:5173/` (no hash). The **IntakePanel** asks for plate **AB-123-CD** and pickup/return photos, then calls `POST /inspection/return`.
+2. **Deep link to a stored report** — `http://localhost:5173/#/report/pr-1-run-1` loads an existing audit via `GET /report/pr-1-run-1`.
+3. **Mock fixtures** — with `MOCK_MODE=1`, `GET /report/{id}` returns ground-truth JSON from `demo/ground-truth/` (no live VLM).
+4. **Frontend fallback** — if the API is unreachable or returns an error, the Studio falls back to `frontend/src/mocks/audit.json` so the UI never goes blank.
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| Port already in use | Change uvicorn port (`--port 8001`) or let Vite pick another port; update `VITE_API_URL` / `CORS_ORIGINS` accordingly |
+| CORS errors in browser console | Add your exact Vite origin to `CORS_ORIGINS` in `backend/.env` |
+| `POST /inspection/return` returns 500 | Set `NVIDIA_API_KEY` in `backend/.env`; live inspection has no mock fallback |
+| Studio shows mock data unexpectedly | Backend may be down — check `GET /health`; or you are on a branch without demo fixtures |
+| Wrong track branch | Rebase onto `main` per the coordination rules above |
+
+---
+
+## Source engine
+
+The Python code at the repo root (`agents/`, `scripts/`, `config/`) is the **original ARIA engine** (agentic pipeline A/B/C/D, `bbox_pct`, multi-entity detection, pixel-difference annotation). Port and adapt it into `backend/` per the build plan above. Full details: [ENGINE_README.md](ENGINE_README.md).

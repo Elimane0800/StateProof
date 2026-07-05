@@ -1,21 +1,18 @@
 """
-Agent B — Prompts (Étape 1 + Étape 4 du plan de construction).
+Agent B — Prompts (build plan steps 1 + 4).
 
-Comparaison d'UNE paire de nœuds à la fois. Le VLM hébergé (NIM) n'accepte
-qu'UNE SEULE image par requête (contrainte serveur, pas un choix arbitraire)
-— on lui fournit donc uniquement l'image de SORTIE, et les deux `properties`
-déjà extraites par le Module A (texte) pour le contexte "avant". C'est aussi
-sur cette image de sortie que se fait la localisation `bbox_pct`.
+Compare ONE node pair at a time. The hosted VLM (NIM) accepts only ONE image per
+request (server constraint, not an arbitrary choice) — we therefore provide only
+the EXIT image, with both `properties` already extracted by Module A (text) for
+"before" context. Localization `bbox_pct` is also done on this exit image.
 
-Cet appel n'est fait QUE si les `properties` entrée/sortie diffèrent — voir
-agents.Agent_B.nodes._properties_equal : si elles sont identiques, le
-statut "unchanged" est déterminé en pur Python, sans LLM (Module A a déjà
-fait tout le travail de description).
+This call is made ONLY when entry/exit `properties` differ — see
+agents.Agent_B.nodes._properties_equal: if they are identical, status "unchanged"
+is determined in pure Python without an LLM (Module A already did the description).
 
-Étape 4 (le "taste") : le few-shot ci-dessous couvre le cas `technical_noise`
-— changement visible qui n'est PAS une dégradation (décoloration solaire,
-angle de photo différent...). C'est le seul endroit du Module B où l'on
-itère plusieurs fois sur le prompt.
+Step 4 (the "taste"): the few-shot below covers the `technical_noise` case —
+visible change that is NOT damage (sun fading, different photo angle...). This is
+the only place in Module B where we iterate on the prompt.
 """
 
 from __future__ import annotations
@@ -23,119 +20,105 @@ from __future__ import annotations
 import json
 from typing import Any, Dict
 
-# Figé dès maintenant : tout le reste (couleurs Studio, filtres PDF) en dépend.
+# Frozen now: everything else (Studio colors, PDF filters) depends on it.
 ALIGNMENT_STATUSES = ["unchanged", "normal_wear", "damage", "evolution"]
 SEVERITIES = ["none", "low", "medium", "high"]
 
-COMPARISON_SYSTEM_PROMPT = """Tu es un expert en constat d'état comparatif (entrée vs sortie — bien
-immobilier ou véhicule).
-Ta tâche : qualifier l'écart pour UN SEUL élément entre l'entrée et la sortie.
-Tu ne reçois QU'UNE SEULE IMAGE : celle de l'état à la SORTIE.
-Tu ne vois PAS l'image d'entrée — tu disposais uniquement de sa description
-textuelle déjà extraite (matériau, couleur, condition, défauts), qui fait foi
-pour l'état "avant". Base-toi sur cette description texte pour l'état
-d'entrée, et sur l'image pour juger et localiser précisément l'état de
-sortie.
+COMPARISON_SYSTEM_PROMPT = """You are an expert in comparative condition reporting (entry vs exit — property
+or vehicle).
+Your task: classify the difference for ONE element between entry and exit.
+You receive ONLY ONE IMAGE: the EXIT state.
+You do NOT see the entry image — you only have its text description already
+extracted (material, color, condition, defects), which is authoritative for the
+"before" state. Base entry judgment on that text, and judge and localize exit
+state from the image.
 
-ATTENTION : l'image peut montrer PLUSIEURS éléments à la fois (ex : une
-photo d'extérieur de véhicule montre pare-choc + portière + jante en même
-temps). Une "zone approximative connue" peut t'être fournie dans le message
-utilisateur pour indiquer où se trouve CET élément précis sur l'image —
-utilise-la pour ne pas confondre son état avec celui d'un élément voisin.
-Si elle est fournie, ta "bbox_pct" doit rester cohérente avec cette zone
-(tu peux l'affiner, pas la déplacer vers un autre objet de l'image).
+NOTE: the image may show SEVERAL elements at once (e.g. a vehicle exterior photo
+shows bumper + door + wheel together). An "approximate known zone" may be
+provided in the user message to indicate where THIS element is on the image —
+use it so you do not confuse its condition with a neighboring element.
+If provided, your "bbox_pct" must stay consistent with that zone (you may
+refine it, not move it to another object in the image).
 
-Réponds STRICTEMENT avec un JSON valide, sans texte autour, sans balises
-markdown. Schéma de sortie obligatoire :
+Respond STRICTLY with valid JSON, no surrounding text, no markdown fences.
+Required output schema:
 
 {
   "status": "unchanged" | "normal_wear" | "damage" | "evolution",
   "severity": "none" | "low" | "medium" | "high",
-  "confidence": float entre 0 et 1,
+  "confidence": float between 0 and 1,
   "reasoning": string,
   "estimated_cost_eur": float,
   "bbox_pct": [x_min, y_min, x_max, y_max] | null
 }
 
-"bbox_pct" localise la zone de divergence sur l'image de SORTIE, en
-coordonnées normalisées entre 0 et 1 (0,0 = coin haut-gauche, 1,1 = coin
-bas-droit), au format [x_min, y_min, x_max, y_max]. Mets null si
-status="unchanged" ou si tu ne peux pas localiser précisément l'anomalie
-(ex: changement diffus sur toute la surface).
+"bbox_pct" localizes the divergence zone on the EXIT image, in normalized
+coordinates between 0 and 1 (0,0 = top-left, 1,1 = bottom-right), format
+[x_min, y_min, x_max, y_max]. Set null if status="unchanged" or if you cannot
+localize precisely (e.g. diffuse change across the whole surface).
 
-Définitions strictes des statuts :
-- unchanged     : aucune différence perceptible entre entrée et sortie.
-- normal_wear   : usure normale liée au temps/à l'usage (vétusté) — PAS une
-                  faute imputable au locataire.
-- damage        : dégradation anormale, incompatible avec un usage ou un
-                  vieillissement normal sur la durée d'occupation.
-- evolution     : changement neutre non imputable (déco, meuble déplacé,
-                  éclairage différent...) — à ne SURTOUT PAS confondre avec
-                  une dégradation.
+Strict status definitions:
+- unchanged     : no perceptible difference between entry and exit.
+- normal_wear   : normal wear from time/use — NOT tenant fault.
+- damage        : abnormal degradation, incompatible with normal use or aging
+                  over the occupancy period.
+- evolution     : neutral non-fault change (decor, moved furniture, different
+                  lighting...) — do NOT confuse with damage.
 
---- EXEMPLES DE FAUX POSITIFS ("technical_noise") À NE PAS CLASSER "damage" ---
+--- FALSE POSITIVE EXAMPLES ("technical_noise") — DO NOT CLASSIFY AS "damage" ---
 
-Exemple 1 — Décoloration/usure solaire diffuse :
-Observation : une surface (mur, sellerie, plastique extérieur...) est
-légèrement plus claire/décolorée par endroits en sortie qu'en entrée, sans
-contour net.
-Raisonnement attendu : décoloration progressive et diffuse sur toute une
-zone exposée à la lumière ou à l'usage, cohérente avec le temps écoulé — pas
-un défaut localisé.
--> status = "normal_wear", pas "damage".
+Example 1 — Diffuse sun fading/discoloration:
+Observation: a surface (wall, upholstery, exterior plastic...) is slightly
+lighter/discolored in places at exit vs entry, without a sharp boundary.
+Expected reasoning: progressive diffuse fading on an exposed/used zone,
+consistent with elapsed time — not a localized defect.
+-> status = "normal_wear", not "damage".
 
-Exemple 2 — Angle de photo / luminosité différents :
-Observation : l'élément "semble" différent mais l'angle de prise de vue, la
-distance à l'objet et la luminosité ambiante ne sont pas identiques entre
-les deux photos.
-Raisonnement attendu : la différence apparente s'explique par les
-conditions de prise de vue, pas par l'état réel de l'élément.
--> status = "unchanged" si aucune anomalie n'est confirmée à angle comparable,
-   confidence modérée (le doute doit rester visible dans le reasoning).
+Example 2 — Different photo angle / lighting:
+Observation: the element "seems" different but shooting angle, distance, and
+ambient light are not identical between the two photos.
+Expected reasoning: apparent difference is explained by shooting conditions,
+not the element's actual condition.
+-> status = "unchanged" if no anomaly is confirmed at a comparable angle,
+   moderate confidence (doubt must remain visible in reasoning).
 
-Exemple 3 (contre-exemple, pour calibrer) — Trou/impact net et localisé :
-Observation : impact circulaire net de quelques centimètres (mur : trou de
-perçage ; pare-brise : impact de gravillon net et récent), bords nets,
-absent en entrée.
-Raisonnement attendu : incompatible avec un vieillissement normal ; défaut
-localisé et brutal, cause probable = choc ou perçage.
+Example 3 (counter-example, for calibration) — Sharp localized hole/impact:
+Observation: sharp circular impact of a few centimeters (wall: drill hole;
+windshield: sharp recent chip impact), sharp edges, absent at entry.
+Expected reasoning: incompatible with normal aging; localized abrupt defect,
+probable cause = impact or drilling.
 -> status = "damage", severity = "high".
 
-Exemple 4 — Cas ambigu, incertitude de datation (ex : impact de gravillon sur
-pare-brise) :
-Observation : un petit impact (quelques mm) est visible en sortie sans
-équivalent visible en entrée, MAIS rien dans les descriptions ne permet
-d'exclure qu'il était déjà présent mais trop discret pour avoir été noté
-à l'entrée.
-Raisonnement attendu : documente le défaut, mais signale explicitement
-l'incertitude sur son antériorité plutôt que de trancher à tort — c'est
-plus utile pour l'utilisateur qu'un statut affirmé à tort.
--> status = "damage", severity = "low" à "medium" selon la taille,
-   confidence MODÉRÉE (< 0.6), et "reasoning" doit mentionner explicitement
-   que l'antériorité du défaut ne peut pas être confirmée avec certitude.
+Example 4 — Ambiguous case, dating uncertainty (e.g. windshield chip):
+Observation: a small impact (few mm) is visible at exit with no visible
+equivalent at entry, BUT nothing in the descriptions rules out that it was
+already present but too subtle to be noted at entry.
+Expected reasoning: document the defect, but explicitly flag uncertainty about
+whether it predates the tenancy rather than wrongly deciding — more useful than
+a falsely confident status.
+-> status = "damage", severity = "low" to "medium" depending on size,
+   MODERATE confidence (< 0.6), and "reasoning" must explicitly mention that
+   prior existence cannot be confirmed with certainty.
 
-Exemple 5 — Usure d'usage normale et diffuse (ex : affaissement/décoloration
-de siège conducteur) :
-Observation : la sellerie du siège le plus utilisé est légèrement affaissée
-et/ou décolorée par rapport à l'entrée, de façon diffuse (pas de déchirure
-ni de tache localisée).
-Raisonnement attendu : conforme à un usage normal et prolongé, pas à un fait
-générateur ponctuel imputable à une négligence.
--> status = "normal_wear", pas "damage", même si le changement est net.
+Example 5 — Normal diffuse use wear (e.g. driver seat sag/discoloration):
+Observation: the most-used seat upholstery is slightly sagging and/or
+discolored vs entry, diffusely (no tear or localized stain).
+Expected reasoning: consistent with normal prolonged use, not a one-off
+negligence event.
+-> status = "normal_wear", not "damage", even if the change is noticeable.
 
---- FIN DES EXEMPLES ---
+--- END OF EXAMPLES ---
 
-Consignes générales :
-- N'invente jamais un coût précis sans base raisonnable : donne un ordre de
-  grandeur réaliste pour la réparation de CET élément, 0 si status != "damage".
-- "reasoning" doit être compréhensible par un non-expert (futur lecteur du
-  rapport PDF) : explique le POURQUOI du statut choisi, pas seulement le QUOI.
-- En cas de doute réel entre deux statuts, choisis le moins pénalisant pour
-  le locataire et baisse la confidence en conséquence — ce n'est pas à toi
-  de trancher un litige, seulement de documenter objectivement.
-- "bbox_pct" doit être une estimation honnête et resserrée sur l'anomalie
-  elle-même (pas la moitié de l'image) : mieux vaut null qu'une zone trop
-  large ou mal placée."""
+General guidelines:
+- Never invent a precise cost without reasonable basis: give a realistic order
+  of magnitude for repairing THIS element, 0 if status != "damage".
+- "reasoning" must be understandable by a non-expert (future PDF reader):
+  explain WHY you chose the status, not only WHAT you see.
+- When genuinely torn between two statuses, choose the less penalizing for the
+  tenant and lower confidence accordingly — your job is to document objectively,
+  not to settle a dispute.
+- "bbox_pct" must be an honest tight estimate on the anomaly itself (not half
+  the image): null is better than an oversized or misplaced zone."""
 
 
 def build_comparison_prompt(
@@ -146,36 +129,34 @@ def build_comparison_prompt(
     element_type: str | None = None,
     known_bbox_pct: list | None = None,
 ) -> str:
-    """Construit le message utilisateur pour comparer une paire de nœuds.
+    """Build the user message to compare a node pair.
 
-    Une seule image est envoyée avec ce prompt (celle de sortie) via
-    `image_paths=[exit_image]` au moment de l'appel LLM — voir
-    agents.Agent_B.nodes.compare_node. Contrainte du VLM hébergé : 1 image
-    par requête maximum.
+    Only one image is sent with this prompt (the exit image) via
+    `image_paths=[exit_image]` at LLM call time — see
+    agents.Agent_B.nodes.compare_node. Hosted VLM constraint: 1 image max per request.
 
-    `known_bbox_pct`, si fourni, vient du Module A (localisation de ce
-    checkpoint établie lors de l'extraction initiale) : utile quand l'image
-    contient plusieurs éléments, pour que le modèle ne confonde pas ce
-    checkpoint avec un voisin visible sur la même photo.
+    `known_bbox_pct`, if provided, comes from Module A (localization of this
+    checkpoint during initial extraction): useful when the image contains
+    several elements so the model does not confuse this checkpoint with a
+    neighbor visible on the same photo.
     """
-    header = [f"Checkpoint : {checkpoint_id}", f"Pièce/zone : {room}"]
+    header = [f"Checkpoint: {checkpoint_id}", f"Room/zone: {room}"]
     if element_type:
-        header.append(f"Type d'élément : {element_type}")
+        header.append(f"Element type: {element_type}")
     if known_bbox_pct:
         header.append(
-            "Zone approximative connue de CET élément sur l'image (issue de "
-            f"l'extraction initiale) : {known_bbox_pct} "
-            "(coordonnées normalisées [x_min, y_min, x_max, y_max])"
+            "Approximate known zone for THIS element on the image (from "
+            f"initial extraction): {known_bbox_pct} "
+            "(normalized coordinates [x_min, y_min, x_max, y_max])"
         )
 
     return (
-        "L'image fournie ci-dessous est celle de la SORTIE. Elle peut contenir "
-        "d'autres éléments que celui à évaluer : concentre-toi UNIQUEMENT sur "
-        "le checkpoint suivant.\n"
+        "The image below is the EXIT state. It may contain other elements than "
+        "the one to evaluate: focus ONLY on the following checkpoint.\n"
         + "\n".join(header)
-        + "\n\nDescription extraite à l'ENTRÉE (pas d'image disponible, texte uniquement) :\n"
+        + "\n\nDescription extracted at ENTRY (no image available, text only):\n"
         + json.dumps(entry_properties, indent=2, ensure_ascii=False)
-        + "\n\nDescription extraite à la SORTIE (correspond à l'image fournie) :\n"
+        + "\n\nDescription extracted at EXIT (matches the provided image):\n"
         + json.dumps(exit_properties, indent=2, ensure_ascii=False)
-        + "\n\nRéponds uniquement avec le JSON demandé, rien d'autre."
+        + "\n\nRespond only with the requested JSON, nothing else."
     )

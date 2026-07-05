@@ -1,16 +1,15 @@
 """
-Agent B — Nodes (Étape 2 du plan de construction).
+Agent B — Nodes (build plan step 2).
 
-compare_node(entry_node, exit_node) -> AlignmentEdge :
-  - court-circuit déterministe (_properties_equal, zéro LLM) si les
-    `properties` extraites par le Module A sont identiques entrée/sortie :
-    inutile de rappeler un modèle pour confirmer un "unchanged" évident.
-  - sinon, appelle le prompt de comparaison (agents.Agent_B.prompts) sur une
-    seule paire, avec UNE SEULE image (celle de sortie — le VLM hébergé
-    limite les requêtes à 1 image), valide/parse la réponse contre
-    `AlignmentEdge`.
-  - retry une fois, puis fallback marqué `comparison_failed=True` (jamais
-    d'exception qui remonte — cohérent avec la robustesse du Module A).
+compare_node(entry_node, exit_node) -> AlignmentEdge:
+  - deterministic short-circuit (_properties_equal, zero LLM) if Module A
+    extracted identical `properties` at entry/exit: no need to call a model to
+    confirm an obvious "unchanged".
+  - otherwise, calls the comparison prompt (agents.Agent_B.prompts) on one
+    pair, with ONE image only (exit — hosted VLM limits requests to 1 image),
+    validates/parses against `AlignmentEdge`.
+  - retries once, then fallback marked `comparison_failed=True` (never raises —
+    consistent with Module A robustness).
 """
 
 from __future__ import annotations
@@ -27,9 +26,8 @@ MAX_RETRIES = 1
 
 
 def _clean_bbox_pct(raw_bbox) -> Optional[List[float]]:
-    """Valide `bbox_pct` sans jamais lever d'exception : une zone mal formée
-    dégrade juste en `None` (pas de watermark) plutôt que de faire échouer
-    toute la comparaison."""
+    """Validate `bbox_pct` without ever raising: a malformed zone degrades to
+    `None` (no watermark) rather than failing the whole comparison."""
     if not isinstance(raw_bbox, (list, tuple)) or len(raw_bbox) != 4:
         return None
     try:
@@ -45,10 +43,9 @@ def _clean_bbox_pct(raw_bbox) -> Optional[List[float]]:
 
 
 def _properties_equal(entry_props, exit_props) -> bool:
-    """True si les deux descriptions extraites par le Module A sont
-    identiques sur le fond (condition + défauts) — la confidence n'entre
-    pas en compte, deux extractions peuvent légitimement différer en
-    confiance sans que l'état réel ait changé."""
+    """True if both Module A extractions are identical in substance (condition +
+    defects) — confidence is ignored; two extractions may legitimately differ in
+    confidence without the actual state having changed."""
     if entry_props.condition != exit_props.condition:
         return False
     return set(entry_props.defects) == set(exit_props.defects)
@@ -67,13 +64,13 @@ def compare_node(
     exit_node: Node,
     llm: Optional[BaseLLMProvider] = None,
 ) -> AlignmentEdge:
-    """Compare un même checkpoint entre `entry_node` et `exit_node`.
+    """Compare the same checkpoint between `entry_node` and `exit_node`.
 
-    Suppose `entry_node.id == exit_node.id` (même checkpoint, même config) —
-    voir agents.Agent_B.graph.align pour la boucle qui garantit cette invariance.
+    Assumes `entry_node.id == exit_node.id` (same checkpoint, same config) —
+    see agents.Agent_B.graph.align for the loop that guarantees this.
     """
-    # Court-circuit déterministe : Module A a déjà tout dit, pas besoin d'un
-    # LLM pour confirmer qu'un checkpoint identique est "unchanged".
+    # Deterministic short-circuit: Module A already said everything; no LLM needed
+    # to confirm an identical checkpoint is "unchanged".
     if _properties_equal(entry_node.properties, exit_node.properties):
         return AlignmentEdge(
             node_id=entry_node.id,
@@ -83,9 +80,9 @@ def compare_node(
             severity="none",
             confidence=min(entry_node.properties.confidence, exit_node.properties.confidence),
             reasoning=(
-                "Aucune différence entre les descriptions extraites par le Module A "
-                "à l'entrée et à la sortie (même condition, mêmes défauts) — "
-                "qualification déterministe, sans appel LLM."
+                "No difference between descriptions extracted by Module A at "
+                "entry and exit (same condition, same defects) — "
+                "deterministic qualification, no LLM call."
             ),
             estimated_cost_eur=0.0,
             comparison_failed=False,
@@ -93,9 +90,9 @@ def compare_node(
 
     llm = llm or _make_llm()
 
-    # Indice de localisation du Module A (zone connue de CE checkpoint dans
-    # l'image partagée) — priorité au bbox de l'image de sortie (celle
-    # effectivement envoyée au VLM), repli sur celui d'entrée si absent.
+    # Module A localization hint (known zone for THIS checkpoint in the shared
+    # image) — prefer exit bbox (the image actually sent to the VLM), fall back
+    # to entry if absent.
     known_bbox_pct = exit_node.bbox_pct or entry_node.bbox_pct
 
     base_prompt = build_comparison_prompt(
@@ -107,9 +104,8 @@ def compare_node(
         known_bbox_pct=known_bbox_pct,
     )
 
-    # Le VLM hébergé n'accepte qu'1 image par requête : on envoie celle de
-    # sortie (c'est aussi sur elle que se fait la localisation bbox_pct),
-    # avec repli sur l'entrée si jamais seule celle-ci est disponible.
+    # Hosted VLM accepts only 1 image per request: send exit (also where bbox_pct
+    # is localized), fall back to entry if only that is available.
     image_path = exit_node.image_path or entry_node.image_path
     image_paths = [image_path] if image_path else []
 
@@ -118,13 +114,13 @@ def compare_node(
         user_message = base_prompt
         if attempt > 0 and last_error:
             user_message += (
-                f"\n\nATTENTION : ta réponse précédente était invalide "
-                f"({last_error}). Corrige et renvoie UNIQUEMENT le JSON attendu."
+                f"\n\nWARNING: your previous response was invalid "
+                f"({last_error}). Fix it and return ONLY the expected JSON."
             )
 
         raw = llm.invoke_for_json(user_message, image_paths=image_paths)
         if raw is None:
-            last_error = "réponse non parsable en JSON"
+            last_error = "response not parseable as JSON"
             continue
 
         try:
@@ -144,9 +140,9 @@ def compare_node(
             last_error = str(e)
             continue
 
-    # Fallback : ne jamais faire planter align() pour une paire ratée.
-    # Le flag `comparison_failed` permet au Module C d'afficher
-    # "donnée non disponible" plutôt qu'un faux statut.
+    # Fallback: never crash align() for one failed pair.
+    # `comparison_failed` lets Module C show "data not available" rather than
+    # a false status.
     return AlignmentEdge(
         node_id=entry_node.id,
         checkpoint_id=entry_node.checkpoint_id,
@@ -154,7 +150,7 @@ def compare_node(
         status="unchanged",
         severity="none",
         confidence=0.0,
-        reasoning="Comparaison automatique indisponible — vérification manuelle requise.",
+        reasoning="Automatic comparison unavailable — manual review required.",
         estimated_cost_eur=0.0,
         comparison_failed=True,
     )

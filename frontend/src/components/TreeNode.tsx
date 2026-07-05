@@ -1,6 +1,7 @@
 import { Handle, Position, type NodeProps } from "reactflow";
 import type { Classification } from "../types/contract";
 import type { TreeNodeData } from "../lib/layout";
+import { displayElementType, displayNodeLabel, normalizeClassification } from "../lib/labels";
 
 export const CLASS_COLORS: Record<Classification, { border: string; bg: string; label: string }> = {
   aligned: { border: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "No charge" },
@@ -10,7 +11,8 @@ export const CLASS_COLORS: Record<Classification, { border: string; bg: string; 
 };
 
 export function TreeNodeCard({ data, selected }: NodeProps<TreeNodeData>) {
-  const c = CLASS_COLORS[data.classification];
+  const classification = normalizeClassification(data.classification);
+  const c = CLASS_COLORS[classification];
   return (
     <div
       className="tree-node"
@@ -22,9 +24,9 @@ export function TreeNodeCard({ data, selected }: NodeProps<TreeNodeData>) {
     >
       <Handle id="t" type="target" position={Position.Top} />
       <Handle id="l" type="target" position={Position.Left} />
-      <div className="tree-node__label">{data.label}</div>
+      <div className="tree-node__label">{displayNodeLabel(data.label, data.rawId)}</div>
       <div className="tree-node__meta">
-        <span className="tree-node__type">{data.type}</span>
+        <span className="tree-node__type">{displayElementType(data.type)}</span>
         <span className="tree-node__dot" style={{ background: c.border }} />
       </div>
       <Handle id="b" type="source" position={Position.Bottom} />

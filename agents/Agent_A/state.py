@@ -1,4 +1,4 @@
-"""Agent A — State partagé par le graphe LangGraph de construction du graphe LPG."""
+"""Agent A — Shared state for the LPG graph-construction LangGraph."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ from agents.common.schemas import Graph, PropertyConfig
 
 
 class GraphBuilderState(TypedDict, total=False):
-    # Entrées
+    # Inputs
     config: PropertyConfig
-    # clé = "{room}:{checkpoint_id}" -> chemin de l'image du checkpoint
+    # key = "{room}:{checkpoint_id}" -> checkpoint image path
     images_by_checkpoint: Dict[str, str]
 
-    # Sorties
+    # Outputs
     graph: Graph
     errors: List[str]

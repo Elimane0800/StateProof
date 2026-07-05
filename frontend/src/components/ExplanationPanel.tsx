@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { AuditPayload, CursorPatch, Classification, Severity } from "../types/contract";
 import { resolveMediaUrl } from "../api/client";
+import { displayNodeId, normalizeClassification } from "../lib/labels";
 import { CLASS_COLORS } from "./TreeNode";
 import { PromptBox } from "./PromptBox";
 
@@ -33,9 +34,10 @@ const BADGE_LABELS: Record<Classification, string> = {
   aligned: "No charge",
 };
 
-function classificationTag(classification: Classification, extra?: string) {
-  const colors = CLASS_COLORS[classification];
-  const label = BADGE_LABELS[classification];
+function classificationTag(classification: Classification | string, extra?: string) {
+  const normalized = normalizeClassification(classification);
+  const colors = CLASS_COLORS[normalized];
+  const label = BADGE_LABELS[normalized];
   return (
     <span className="tag" style={{ color: colors.border }}>
       ● {label}
@@ -239,7 +241,7 @@ export function ExplanationPanel({
   return (
     <aside className="panel">
       <header className="panel__head">
-        <span className="panel__node">{selectedNodeId}</span>
+        <span className="panel__node">{displayNodeId(selectedNodeId)}</span>
       </header>
 
       {evidenceBlock}

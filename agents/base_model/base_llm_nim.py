@@ -19,8 +19,8 @@ load_dotenv()
 
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 DEFAULT_MODEL   = "meta/llama-3.3-70b-instruct"
-# Modèle multimodal (VLM) utilisé par les modules qui raisonnent sur des images
-# (Agent_A — description d'état, Agent_B — comparaison entrée/sortie).
+# Multimodal (VLM) model used by modules that reason on images
+# (Agent_A — state description, Agent_B — entry/exit comparison).
 DEFAULT_VISION_MODEL = "meta/llama-3.2-90b-vision-instruct"
 DEFAULT_TEMP    = 0.6
 DEFAULT_TOKENS  = 4096
@@ -31,10 +31,10 @@ def get_nvidia_llm(
     temperature: float = DEFAULT_TEMP,
     max_tokens:  int   = DEFAULT_TOKENS,
 ) -> ChatOpenAI:
-    """Factory — retourne un ChatOpenAI pointé sur l'endpoint NVIDIA."""
+    """Factory — returns a ChatOpenAI pointed at the NVIDIA endpoint."""
     api_key = os.environ.get("NVIDIA_API_KEY")
     if not api_key:
-        raise ValueError("NVIDIA_API_KEY manquant dans les variables d'environnement.")
+        raise ValueError("NVIDIA_API_KEY missing from environment variables.")
     return ChatOpenAI(
         model=model_name,
         openai_api_key=api_key,
@@ -76,8 +76,8 @@ class ChatNVIDIA:
 
 class BaseLLMProvider:
     """
-    Wrapper haut niveau utilisé par les nodes ARIA.
-    Gère l'injection du system prompt, le contexte, et le parsing JSON.
+    High-level wrapper used by ARIA nodes.
+    Handles system prompt injection, context, and JSON parsing.
     """
 
     def __init__(
@@ -102,9 +102,9 @@ class BaseLLMProvider:
             messages.append(SystemMessage(content=self.system_prompt))
         prompt = user_message
         if context:
-            prompt = f"# CONTEXTE\n{context}\n\n{prompt}"
+            prompt = f"# CONTEXT\n{context}\n\n{prompt}"
         if input_data:
-            prompt += "\n\n# DONNÉES (JSON):\n" + json.dumps(input_data, indent=2, ensure_ascii=False)
+            prompt += "\n\n# DATA (JSON):\n" + json.dumps(input_data, indent=2, ensure_ascii=False)
         if image_paths:
             content: List[Dict[str, Any]] = [{"type": "text", "text": prompt}]
             for path in image_paths:
@@ -116,7 +116,7 @@ class BaseLLMProvider:
 
     @staticmethod
     def _image_to_data_url(image_path: str) -> str:
-        """Encode une image locale en data URL base64 pour un VLM multimodal."""
+        """Encode a local image as a base64 data URL for a multimodal VLM."""
         mime_type, _ = mimetypes.guess_type(image_path)
         mime_type = mime_type or "image/jpeg"
         with open(image_path, "rb") as f:
@@ -139,8 +139,8 @@ class BaseLLMProvider:
                image_paths: Optional[List[str]] = None) -> str:
         resp = self._llm.invoke(self._build_messages(user_message, context, input_data, image_paths))
         content = getattr(resp, "content", None)
-        # resp.content peut être une liste de blocs (ex: [{"type": "text", "text": "..."}])
-        # quand l'API NVIDIA retourne un message structuré — on normalise en str propre.
+        # resp.content may be a list of blocks (e.g. [{"type": "text", "text": "..."}])
+        # when the NVIDIA API returns a structured message — normalize to a clean str.
         if content is None:
             return str(resp)
         if isinstance(content, list):
@@ -163,7 +163,7 @@ class BaseLLMProvider:
         try:
             return json.loads(self._clean_json(raw))
         except json.JSONDecodeError as e:
-            print(f"❌ JSON parse error: {e}\nRéponse brute:\n{raw[:300]}")
+            print(f"JSON parse error: {e}\nRaw response:\n{raw[:300]}")
             return None
 
     async def ainvoke(self, user_message: str, context: Optional[str] = None,
@@ -205,25 +205,25 @@ if __name__ == "__main__":
         except (AttributeError, ValueError):
             pass
 
-    print("=== ARIA LLM Provider — Test rapide ===\n")
+    print("=== ARIA LLM Provider — Quick test ===\n")
 
     llm = BaseLLMProvider(
-        system_prompt="Tu es un assistant concis. Réponds en une phrase maximum.",
+        system_prompt="You are a concise assistant. Reply in one sentence maximum.",
         temperature=0.6,
         max_tokens=128,
     )
 
-    # Test 1 — invoke simple
-    print("[1] invoke() :")
-    print(llm.invoke("Dis bonjour en français."))
+    # Test 1 — simple invoke
+    print("[1] invoke():")
+    print(llm.invoke("Say hello in English."))
 
     # Test 2 — invoke_for_json
-    print("\n[2] invoke_for_json() :")
+    print("\n[2] invoke_for_json():")
     llm_json = BaseLLMProvider(
-        system_prompt="Réponds UNIQUEMENT en JSON valide, sans backticks ni texte.",
+        system_prompt="Reply ONLY with valid JSON, no backticks or extra text.",
         temperature=0.2,
         max_tokens=128,
     )
-    print(llm_json.invoke_for_json('Retourne {"nom": "ARIA", "version": 1}'))
+    print(llm_json.invoke_for_json('Return {"name": "ARIA", "version": 1}'))
 
-    print("\n✅ Tests terminés.")
+    print("\nTests complete.")

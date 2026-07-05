@@ -1,4 +1,4 @@
-"""Agent D — State partagé par le graphe LangGraph de qualification légale."""
+"""Agent D — Shared state for the legal-qualification LangGraph."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from agents.common.schemas import AlignmentEdge, LegalQualification, Node, Vetus
 
 
 class QualificationState(TypedDict, total=False):
-    # Entrées
+    # Inputs
     edge: AlignmentEdge
     occupancy_months: int
     element_category: Optional[str]
@@ -16,5 +16,5 @@ class QualificationState(TypedDict, total=False):
     entry_node: Optional[Node]
     exit_node: Optional[Node]
 
-    # Sortie
+    # Output
     qualification: LegalQualification

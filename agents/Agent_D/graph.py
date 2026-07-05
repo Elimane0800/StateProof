@@ -1,15 +1,14 @@
 """
-Agent D — Qualification légale (vétusté vs usage anormal), Étapes 3 & 4.
+Agent D — Legal qualification (wear vs abnormal use), steps 3 & 4.
 
-qualify(edge, occupancy_months, grid=None) -> LegalQualification choisit le
-mode selon la présence de `grid` :
-  - Mode 1 (déterministe) si une grille de vétusté est fournie et couvre la
-    catégorie d'élément concernée.
-  - Mode 2 (raisonnement LLM par analogie jurisprudentielle) sinon.
+qualify(edge, occupancy_months, grid=None) -> LegalQualification chooses the mode
+based on `grid` presence:
+  - Mode 1 (deterministic) if a wear grid is provided and covers the element category.
+  - Mode 2 (LLM reasoning by case-law analogy) otherwise.
 
-Le `disclaimer` (porté par `LegalQualification`, valeur par défaut dans le
-schéma commun) doit être répercuté dans le PDF final (Module C), pas
-seulement dans le JSON — voir agents.Agent_C.prompts.LEGAL_DISCLAIMER.
+The `disclaimer` (on `LegalQualification`, default in the common schema) must be
+reflected in the final PDF (Module C), not only in JSON — see
+agents.Agent_C.prompts.LEGAL_DISCLAIMER.
 """
 
 from __future__ import annotations
@@ -31,13 +30,13 @@ def qualify(
     entry_node: Optional[Node] = None,
     exit_node: Optional[Node] = None,
 ) -> LegalQualification:
-    """Point d'entrée unique du Module D. Ne qualifie que les écarts
-    pertinents : `unchanged` n'a rien à qualifier légalement."""
+    """Single entry point for Module D. Only qualifies relevant divergences:
+    `unchanged` has nothing to qualify legally."""
     if edge.status == "unchanged":
         return LegalQualification(
             legal_qualification="usage_normal",
             responsibility="indetermine",
-            reasoning="Aucun écart constaté, qualification légale non applicable.",
+            reasoning="No divergence observed; legal qualification not applicable.",
             confidence=1.0,
         )
 
@@ -52,7 +51,7 @@ def qualify(
 
 
 # ---------------------------------------------------------------------------
-# Orchestration LangGraph (optionnelle) — routage conditionnel Mode 1 / Mode 2
+# Optional LangGraph orchestration — conditional Mode 1 / Mode 2 routing
 # ---------------------------------------------------------------------------
 
 def _route(state: QualificationState) -> str:
@@ -97,15 +96,15 @@ if __name__ == "__main__":
     edge = AlignmentEdge(
         node_id="salon:mur_nord", checkpoint_id="mur_nord", room="salon",
         status="damage", severity="high", confidence=0.91,
-        reasoning="Impact localisé incompatible avec un vieillissement normal.",
+        reasoning="Localized impact incompatible with normal aging.",
         estimated_cost_eur=45,
     )
 
-    # Mode 1 — avec grille
+    # Mode 1 — with grid
     grid = {"mur": VetusteGridEntry(duree_vie_ans=10, franchise_ans=1, taux_annuel=0.10)}
     result_mode1 = qualify(edge, occupancy_months=36, element_category="mur", grid=grid)
-    print("Mode 1 :", json.dumps(result_mode1.model_dump(), indent=2, ensure_ascii=False))
+    print("Mode 1:", json.dumps(result_mode1.model_dump(), indent=2, ensure_ascii=False))
 
-    # Mode 2 — sans grille (nécessite NVIDIA_API_KEY pour un vrai appel LLM)
+    # Mode 2 — without grid (requires NVIDIA_API_KEY for a real LLM call)
     # result_mode2 = qualify(edge, occupancy_months=36, element_category="mur")
-    # print("Mode 2 :", json.dumps(result_mode2.model_dump(), indent=2, ensure_ascii=False))
+    # print("Mode 2:", json.dumps(result_mode2.model_dump(), indent=2, ensure_ascii=False))

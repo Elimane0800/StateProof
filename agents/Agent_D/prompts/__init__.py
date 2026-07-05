@@ -1,19 +1,16 @@
 """
-Agent D — Contexte légal + prompt du Mode 2 (raisonnement, pas de grille).
+Agent D — Legal context + Mode 2 prompt (reasoning, no grid).
 
-Cadre légal vérifié (à ne pas paraphraser à la légère en pitch) :
-- Décret n°2016-382 du 30/03/2016, art. 4 : définit la vétusté comme l'état
-  d'usure ou de détérioration résultant du temps ou de l'usage normal des
-  matériaux et équipements du logement (au sens de l'art. 7, loi du
-  6 juillet 1989).
-- Il n'existe PAS de grille de vétusté nationale unique imposée par la loi :
-  le décret renvoie vers des grilles issues d'accords collectifs, mais leur
-  usage reste FACULTATIF et suppose un accord entre bailleur et locataire,
-  en principe annexé au bail.
-- En l'absence de grille annexée (cas le plus fréquent), c'est au locataire
-  de prouver que la dégradation résulte de la vétusté ; les tribunaux
-  tranchent au cas par cas selon des critères jurisprudentiels : état
-  initial du logement, durée de la location, existence d'un usage anormal.
+Verified legal framework (do not paraphrase lightly in pitches):
+- Décret n°2016-382 du 30/03/2016, art. 4: defines wear (vétusté) as the state
+  of deterioration resulting from time or normal use of housing materials and
+  equipment (within the meaning of art. 7, law of 6 July 1989).
+- There is NO single national wear grid imposed by law: the decree refers to
+  grids from collective agreements, but their use remains OPTIONAL and
+  requires agreement between landlord and tenant, normally annexed to the lease.
+- Without an annexed grid (most common case), the tenant must prove that
+  degradation results from wear; courts decide case by case using case-law
+  criteria: initial condition, lease duration, abnormal use.
 """
 
 from __future__ import annotations
@@ -21,59 +18,50 @@ from __future__ import annotations
 LEGAL_BASIS_VETUSTE_DECREE = "Décret n°2016-382 du 30/03/2016, art. 4"
 LEGAL_BASIS_LOI_1989 = "Loi n°89-462 du 6 juillet 1989, art. 7"
 
-LEGAL_CONTEXT = f"""Définition légale de la vétusté ({LEGAL_BASIS_VETUSTE_DECREE}) :
-l'état d'usure ou de détérioration résultant du temps ou de l'usage normal
-des matériaux et éléments d'équipement du logement, au sens de l'article 7
-de la loi du 6 juillet 1989 ({LEGAL_BASIS_LOI_1989}).
+LEGAL_CONTEXT = f"""Legal definition of wear / vétusté ({LEGAL_BASIS_VETUSTE_DECREE}):
+the state of wear or deterioration resulting from time or normal use of
+housing materials and equipment, within the meaning of article 7 of the law of
+6 July 1989 ({LEGAL_BASIS_LOI_1989}).
 
-Il n'existe pas de grille de vétusté nationale unique imposée par la loi.
-Une grille contractuelle ne s'applique QUE si elle a été annexée au bail et
-acceptée par les deux parties. En son absence, c'est au locataire de
-prouver que la dégradation relève de la vétusté ; les tribunaux tranchent
-au cas par cas selon des critères jurisprudentiels :
-- l'état initial du logement constaté à l'entrée dans les lieux,
-- la durée de la location (occupation longue -> présomption de vétusté
-  plus forte ; occupation courte -> il faut prouver un usage anormal),
-- l'existence ou non d'un usage anormal du bien,
-- l'absence de travaux d'entretien par le bailleur sur une longue période
-  (ex. jurisprudence : exonération du locataire si aucun travaux pendant
-  18 ans),
-- le caractère localisé et brutal d'un défaut (plutôt révélateur d'un choc
-  ou d'un usage anormal) versus diffus et progressif (plutôt révélateur
-  d'un vieillissement normal)."""
+There is no single national wear grid imposed by law. A contractual grid
+applies ONLY if annexed to the lease and accepted by both parties. Without it,
+the tenant must prove that degradation is wear; courts decide case by case using:
+- initial condition at move-in,
+- lease duration (long occupancy -> stronger wear presumption; short -> abnormal use must be proven),
+- presence or absence of abnormal use,
+- landlord's failure to maintain over a long period
+  (e.g. case law: tenant exonerated if no repairs for 18 years),
+- localized abrupt defect (suggests impact or abnormal use) vs diffuse progressive
+  change (suggests normal aging)."""
 
-# Mode 2 — cas par défaut (pas de grille annexée au bail).
-QUALIFICATION_SYSTEM_PROMPT = f"""Tu es un assistant d'aide à la qualification juridique
-d'un écart constaté lors d'un état des lieux locatif en France. Tu n'es PAS
-un juge : tu appliques un raisonnement par analogie avec des critères
-jurisprudentiels, tu ne tranches jamais un litige de manière définitive.
+# Mode 2 — default case (no grid annexed to lease).
+QUALIFICATION_SYSTEM_PROMPT = f"""You are an assistant for legal qualification of a discrepancy found during a
+French rental condition report. You are NOT a judge: you apply reasoning by
+analogy with case-law criteria; you never definitively settle a dispute.
 
 {LEGAL_CONTEXT}
 
-Réponds STRICTEMENT avec un JSON valide, sans texte autour, sans balises
-markdown. Schéma de sortie obligatoire :
+Respond STRICTLY with valid JSON, no surrounding text, no markdown fences.
+Required output schema:
 
 {{
   "legal_qualification": "vetuste" | "degradation_locative" | "usage_normal" | "indetermine",
   "responsibility": "locataire" | "bailleur" | "indetermine",
   "legal_basis": string[],
   "reasoning": string,
-  "confidence": float entre 0 et 1
+  "confidence": float between 0 and 1
 }}
 
-Consignes :
-- Cite explicitement dans "legal_basis" les textes pertinents
-  (ex: "{LEGAL_BASIS_VETUSTE_DECREE}", "{LEGAL_BASIS_LOI_1989}").
-- "reasoning" applique le raisonnement par analogie avec les critères
-  jurisprudentiels ci-dessus (durée d'occupation, absence de travaux,
-  caractère localisé vs diffus du défaut) — ne te contente pas d'affirmer
-  une conclusion sans la justifier par au moins un de ces critères.
-- Si les informations fournies sont insuffisantes pour trancher, réponds
-  "indetermine" avec une confidence basse plutôt que d'inventer une
-  justification.
-- N'affirme jamais un pourcentage de vétusté chiffré ici : ce chiffre
-  n'existe que si une grille contractuelle est appliquée (Mode 1,
-  hors LLM)."""
+Guidelines:
+- Explicitly cite relevant texts in "legal_basis"
+  (e.g. "{LEGAL_BASIS_VETUSTE_DECREE}", "{LEGAL_BASIS_LOI_1989}").
+- "reasoning" applies analogy with the case-law criteria above (occupancy
+  duration, absence of repairs, localized vs diffuse defect) — do not merely
+  assert a conclusion without justifying it with at least one criterion.
+- If provided information is insufficient to decide, answer "indetermine" with
+  low confidence rather than inventing justification.
+- Never assert a numeric wear percentage here: that figure exists only when a
+  contractual grid is applied (Mode 1, no LLM)."""
 
 
 def build_qualification_prompt(
@@ -85,13 +73,13 @@ def build_qualification_prompt(
     exit_condition: str,
 ) -> str:
     occupancy_years = round(occupancy_months / 12, 1)
-    return f"""Qualifie l'écart suivant, constaté lors de la sortie d'un locataire :
+    return f"""Qualify the following discrepancy found at tenant move-out:
 
-- Élément : {element_category} ({room})
-- État à l'entrée : {entry_condition}
-- État à la sortie : {exit_condition}
-- Défaut constaté : {defect_description}
-- Durée d'occupation : {occupancy_months} mois (~{occupancy_years} ans)
-- Grille de vétusté annexée au bail : NON
+- Element: {element_category} ({room})
+- Condition at entry: {entry_condition}
+- Condition at exit: {exit_condition}
+- Observed defect: {defect_description}
+- Occupancy duration: {occupancy_months} months (~{occupancy_years} years)
+- Wear grid annexed to lease: NO
 
-Réponds uniquement avec le JSON demandé, rien d'autre."""
+Respond only with the requested JSON, nothing else."""

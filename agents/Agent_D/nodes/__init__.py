@@ -1,12 +1,11 @@
 """
-Agent D — Mode 1 (déterministe, Étape 1) + Mode 2 (raisonnement légal, Étape 2).
+Agent D — Mode 1 (deterministic, step 1) + Mode 2 (legal reasoning, step 2).
 
-Mode 1 : une fonction pure, zéro LLM, testable en 10 minutes avec une grille
-bidon — c'est exactement le mécanisme prévu par le décret quand une grille
-contractuelle existe.
+Mode 1: a pure function, zero LLM, testable in 10 minutes with a dummy grid —
+exactly the mechanism foreseen by the decree when a contractual grid exists.
 
-Mode 2 : un prompt LLM ancré sur les critères jurisprudentiels, pas sur des
-chiffres inventés. Cas par défaut (aucune grille annexée au bail).
+Mode 2: an LLM prompt anchored on case-law criteria, not invented figures.
+Default case (no grid annexed to lease).
 """
 
 from __future__ import annotations
@@ -32,7 +31,7 @@ MAX_RETRIES = 1
 
 
 # ---------------------------------------------------------------------------
-# Mode 1 — déterministe (grille de vétusté annexée au bail)
+# Mode 1 — deterministic (wear grid annexed to lease)
 # ---------------------------------------------------------------------------
 
 def apply_vetuste_grid(
@@ -41,9 +40,8 @@ def apply_vetuste_grid(
     grid: VetusteGrid,
     estimated_cost_eur: float,
 ) -> LegalQualification:
-    """Applique une grille de vétusté contractuelle. Pas de LLM ici, juste
-    du calcul — légalement défendable puisque c'est exactement le mécanisme
-    prévu par le décret n°2016-382 quand une grille existe."""
+    """Apply a contractual wear grid. No LLM here — legally defensible since it
+    is exactly the mechanism foreseen by decree n°2016-382 when a grid exists."""
     entry = grid.get(element_category)
     if entry is None:
         return LegalQualification(
@@ -52,8 +50,8 @@ def apply_vetuste_grid(
             legal_basis=[LEGAL_BASIS_VETUSTE_DECREE],
             grille_appliquee=False,
             reasoning=(
-                f"Aucune entrée de grille pour la catégorie '{element_category}' : "
-                "qualification impossible en Mode 1 (grille), retomber sur le Mode 2."
+                f"No grid entry for category '{element_category}': "
+                "qualification impossible in Mode 1 (grid); fall back to Mode 2."
             ),
             confidence=0.0,
         )
@@ -70,18 +68,18 @@ def apply_vetuste_grid(
         abattement_pct=round(abattement * 100, 1),
         chargeable_amount_eur=chargeable,
         reasoning=(
-            f"Grille contractuelle appliquée pour '{element_category}' : "
-            f"{years_occupied:.1f} an(s) d'occupation, franchise de "
-            f"{entry.franchise_ans} an(s), taux d'abattement de "
-            f"{entry.taux_annuel * 100:.1f}%/an -> abattement de "
+            f"Contractual grid applied for '{element_category}': "
+            f"{years_occupied:.1f} year(s) of occupancy, franchise of "
+            f"{entry.franchise_ans} year(s), deduction rate of "
+            f"{entry.taux_annuel * 100:.1f}%/year -> deduction of "
             f"{abattement * 100:.1f}%."
         ),
-        confidence=1.0,  # calcul déterministe, pas d'incertitude de modèle
+        confidence=1.0,  # deterministic calculation, no model uncertainty
     )
 
 
 # ---------------------------------------------------------------------------
-# Mode 2 — raisonnement légal par LLM (cas par défaut, pas de grille)
+# Mode 2 — legal reasoning by LLM (default case, no grid)
 # ---------------------------------------------------------------------------
 
 def _make_llm() -> BaseLLMProvider:
@@ -99,8 +97,8 @@ def qualify_with_llm(
     exit_node: Optional[Node] = None,
     llm: Optional[BaseLLMProvider] = None,
 ) -> LegalQualification:
-    """Qualifie un écart `damage` par analogie jurisprudentielle, sans
-    chiffre inventé. Ne lève jamais d'exception : fallback "indetermine"."""
+    """Qualify a `damage` edge by case-law analogy, without invented figures.
+    Never raises: fallback "indetermine"."""
     llm = llm or _make_llm()
 
     element_category = (entry_node or exit_node).element_type if (entry_node or exit_node) else None
@@ -109,8 +107,8 @@ def qualify_with_llm(
         room=edge.room,
         occupancy_months=occupancy_months,
         defect_description=edge.reasoning,
-        entry_condition=entry_node.properties.condition if entry_node else "inconnu",
-        exit_condition=exit_node.properties.condition if exit_node else "inconnu",
+        entry_condition=entry_node.properties.condition if entry_node else "unknown",
+        exit_condition=exit_node.properties.condition if exit_node else "unknown",
     )
 
     last_error: Optional[str] = None
@@ -118,13 +116,13 @@ def qualify_with_llm(
         user_message = prompt
         if attempt > 0 and last_error:
             user_message += (
-                f"\n\nATTENTION : ta réponse précédente était invalide ({last_error}). "
-                "Corrige et renvoie UNIQUEMENT le JSON attendu."
+                f"\n\nWARNING: your previous response was invalid ({last_error}). "
+                "Fix it and return ONLY the expected JSON."
             )
 
         raw = llm.invoke_for_json(user_message)
         if raw is None:
-            last_error = "réponse non parsable en JSON"
+            last_error = "response not parseable as JSON"
             continue
 
         try:
@@ -148,6 +146,6 @@ def qualify_with_llm(
         legal_basis=[],
         grille_appliquee=False,
         chargeable_amount_eur=edge.estimated_cost_eur,
-        reasoning="Qualification automatique indisponible — analyse manuelle requise.",
+        reasoning="Automatic qualification unavailable — manual review required.",
         confidence=0.0,
     )

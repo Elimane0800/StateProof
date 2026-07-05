@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-Trigger de test visuel — Module A (x2) + Module B + watermark de divergence.
+Visual test trigger — Module A (x2) + Module B + divergence watermark.
 
-Prend deux photos d'un même checkpoint (avant/après), reconstruit les deux
-`Node` (Module A), les compare (Module B), puis écrit deux images annotées
-avec un watermark très transparent sur la zone de divergence détectée par
-le VLM : VERT sur l'image d'entrée, ROUGE sur l'image de sortie.
+Takes two photos of the same checkpoint (before/after), rebuilds both `Node`s
+(Module A), compares them (Module B), then writes two annotated images with a
+very transparent watermark on the detected divergence zone: GREEN on the entry
+image, RED on the exit image.
 
-Usage :
+Usage:
     uv run scripts/run_visual_test.py
     uv run scripts/run_visual_test.py \\
         --entry-image data/test/entry.jpg --exit-image data/test/exit.jpg \\
         --checkpoint-id mur_nord --room salon --element-type mur \\
         --output-dir data/test/annotated
 
-Nécessite NVIDIA_API_KEY (Module A + B font tous les deux un appel VLM).
+Requires NVIDIA_API_KEY (Module A + B both make VLM calls).
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ from agents.Agent_B.visualize import annotate_divergence  # noqa: E402
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Test visuel Module A + B — watermark de divergence")
+    parser = argparse.ArgumentParser(description="Visual test Module A + B — divergence watermark")
     parser.add_argument("--entry-image", default="data/test/entry.jpg")
     parser.add_argument("--exit-image", default="data/test/exit.jpg")
     parser.add_argument("--checkpoint-id", default="test")
@@ -45,26 +45,26 @@ def main() -> None:
     entry_image = Path(args.entry_image)
     exit_image = Path(args.exit_image)
     if not entry_image.exists() or not exit_image.exists():
-        print(f"[Test visuel] Images introuvables : {entry_image} / {exit_image}\n"
-              "Déposez vos deux photos dans data/test/ (voir data/test/README.md).")
+        print(f"[Visual test] Images not found: {entry_image} / {exit_image}\n"
+              "Drop your two photos in data/test/ (see data/test/README.md).")
         sys.exit(1)
 
     try:
-        print("[Test visuel] Module A — description de l'état (entrée)...")
+        print("[Visual test] Module A — state description (entry)...")
         entry_node = build_node(str(entry_image), args.checkpoint_id, args.room, args.element_type)
-        print("[Test visuel] Module A — description de l'état (sortie)...")
+        print("[Visual test] Module A — state description (exit)...")
         exit_node = build_node(str(exit_image), args.checkpoint_id, args.room, args.element_type)
 
-        print("[Test visuel] Module B — comparaison entrée/sortie...")
+        print("[Visual test] Module B — entry/exit comparison...")
         edge = compare_node(entry_node, exit_node)
     except Exception as e:  # noqa: BLE001
-        print(f"[Test visuel] Échec : {e}\nVérifiez NVIDIA_API_KEY (export dans le terminal ou fichier .env).")
+        print(f"[Visual test] Failed: {e}\nCheck NVIDIA_API_KEY (export in terminal or .env file).")
         sys.exit(1)
 
     print(json.dumps(edge.model_dump(), indent=2, ensure_ascii=False))
 
     entry_out, exit_out = annotate_divergence(str(entry_image), str(exit_image), edge, args.output_dir)
-    print(f"[Test visuel] Images annotées -> {entry_out} (vert) / {exit_out} (rouge)")
+    print(f"[Visual test] Annotated images -> {entry_out} (green) / {exit_out} (red)")
 
 
 if __name__ == "__main__":

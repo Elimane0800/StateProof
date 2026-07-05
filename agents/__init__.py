@@ -1,12 +1,11 @@
 """
-ARIA — Pipeline agentique en 4 modules.
+ARIA — 4-module agentic pipeline.
 
 Module A (Agent_A.build_graph)  -> entry_graph, exit_graph
 Module B (Agent_B.align)        -> list[AlignmentEdge] + confidence_score
-Module D (Agent_D.qualify)      -> LegalQualification par AlignmentEdge "damage"
+Module D (Agent_D.qualify)      -> LegalQualification per "damage" AlignmentEdge
 Module C (Agent_C.build_report) -> rapport.pdf
 
-Chaque flèche est un contrat de données (agents.common.schemas), pas de code
-partagé : les 4 modules sont codables et testables indépendamment, chacun
-contre des mocks des autres.
+Each arrow is a data contract (agents.common.schemas), not shared code: the 4
+modules can be coded and tested independently, each against mocks of the others.
 """

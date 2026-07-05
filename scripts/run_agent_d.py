@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-Trigger indépendant — Module D (qualification légale).
+Independent trigger — Module D (legal qualification).
 
-Usage :
-    # Mode 1 (déterministe), démo intégrée, aucune clé API requise :
+Usage:
+    # Mode 1 (deterministic), built-in demo, no API key required:
     uv run scripts/run_agent_d.py
 
-    # Mode 1 avec une vraie grille et un vrai edge :
+    # Mode 1 with a real grid and edge:
     uv run scripts/run_agent_d.py --edge edge.json --occupancy-months 36 \\
         --element-category mur --grid config/vetuste_grid.example.json
 
-    # Mode 2 (raisonnement LLM par analogie jurisprudentielle, nécessite NVIDIA_API_KEY) :
+    # Mode 2 (LLM reasoning by case-law analogy, requires NVIDIA_API_KEY):
     uv run scripts/run_agent_d.py --edge edge.json --occupancy-months 8 --force-mode2
 """
 
@@ -33,26 +33,26 @@ def _demo_edge() -> AlignmentEdge:
     return AlignmentEdge(
         node_id="salon:mur_nord", checkpoint_id="mur_nord", room="salon",
         status="damage", severity="high", confidence=0.91,
-        reasoning="Impact localisé incompatible avec un vieillissement normal.",
+        reasoning="Localized impact incompatible with normal aging.",
         estimated_cost_eur=45,
     )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Module D — qualify (Mode 1 déterministe / Mode 2 LLM)")
-    parser.add_argument("--edge", default=None, help="JSON d'un AlignmentEdge")
+    parser = argparse.ArgumentParser(description="Module D — qualify (Mode 1 deterministic / Mode 2 LLM)")
+    parser.add_argument("--edge", default=None, help="JSON AlignmentEdge")
     parser.add_argument("--occupancy-months", type=int, default=36)
     parser.add_argument("--element-category", default="mur")
     parser.add_argument("--grid", default="config/vetuste_grid.example.json")
     parser.add_argument("--force-mode2", action="store_true",
-                         help="Force le raisonnement LLM même si une grille couvre la catégorie.")
+                         help="Force LLM reasoning even if a grid covers the category.")
     parser.add_argument("--output", default=None)
     args = parser.parse_args()
 
     if args.edge:
         edge = AlignmentEdge.model_validate_json(Path(args.edge).read_text())
     else:
-        print("[Module D] Aucun --edge fourni : démo intégrée (Mode 1, sans clé API).")
+        print("[Module D] No --edge provided: built-in demo (Mode 1, no API key).")
         edge = _demo_edge()
 
     try:
@@ -65,7 +65,7 @@ def main() -> None:
                 grid = {k: VetusteGridEntry.model_validate(v) for k, v in raw_grid.items() if not k.startswith("_")}
             result = qualify(edge, args.occupancy_months, element_category=args.element_category, grid=grid)
     except Exception as e:  # noqa: BLE001
-        print(f"[Module D] Échec : {e}\nVérifiez NVIDIA_API_KEY (export dans le terminal ou fichier .env) si le Mode 2 était sollicité.")
+        print(f"[Module D] Failed: {e}\nCheck NVIDIA_API_KEY (export in terminal or .env file) if Mode 2 was requested.")
         sys.exit(1)
 
     output_json = json.dumps(result.model_dump(), indent=2, ensure_ascii=False)

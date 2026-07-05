@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Trigger indépendant — Module A (construction du graphe LPG).
+Independent trigger — Module A (LPG graph construction).
 
-Usage :
+Usage:
     uv run scripts/run_agent_a.py
     uv run scripts/run_agent_a.py --config config/checkpoints.example.json \\
         --images-dir data/appt-12/entry --output entry_graph.json
 
-Sans --images-dir ni --images-map, le script tourne quand même (smoke test) :
-il produit un graphe vide, ce qui valide le câblage (config, imports,
-LangGraph) sans clé API ni images réelles.
+Without --images-dir or --images-map, the script still runs (smoke test): it
+produces an empty graph, validating wiring (config, imports, LangGraph) without
+an API key or real images.
 
-Convention de nommage des images dans --images-dir :
-    {room}__{checkpoint_id}.<ext>   ex: salon__mur_nord.jpg
-Alternative : --images-map, un JSON {"room:checkpoint_id": "chemin"}.
+Image naming convention in --images-dir:
+    {room}__{checkpoint_id}.<ext>   e.g. salon__mur_nord.jpg
+Alternative: --images-map, a JSON {"room:checkpoint_id": "path"}.
 """
 
 from __future__ import annotations
@@ -42,10 +42,10 @@ def discover_images(images_dir: Path) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Module A — build_graph (entry_graph ou exit_graph)")
+    parser = argparse.ArgumentParser(description="Module A — build_graph (entry_graph or exit_graph)")
     parser.add_argument("--config", default="config/checkpoints.example.json")
     parser.add_argument("--images-dir", default=None)
-    parser.add_argument("--images-map", default=None, help="JSON {'room:checkpoint_id': 'chemin'} (prioritaire sur --images-dir)")
+    parser.add_argument("--images-map", default=None, help="JSON {'room:checkpoint_id': 'path'} (overrides --images-dir)")
     parser.add_argument("--output", default="graph.json")
     args = parser.parse_args()
 
@@ -57,18 +57,18 @@ def main() -> None:
         images_by_checkpoint = discover_images(Path(args.images_dir))
     else:
         images_by_checkpoint = {}
-        print("[Module A] Aucune image fournie (--images-dir/--images-map) : "
-              "smoke test de câblage, le graphe produit sera vide, zéro appel LLM.")
+        print("[Module A] No images provided (--images-dir/--images-map): "
+              "wiring smoke test; output graph will be empty, zero LLM calls.")
 
     try:
         graph = build_graph(config, images_by_checkpoint)
-    except Exception as e:  # noqa: BLE001 — trigger CLI : on veut un message clair, pas une trace brute
-        print(f"[Module A] Échec : {e}\n"
-              "Vérifiez NVIDIA_API_KEY (export dans le terminal ou fichier .env) si des images étaient fournies.")
+    except Exception as e:  # noqa: BLE001 — CLI trigger: clear message, not a raw traceback
+        print(f"[Module A] Failed: {e}\n"
+              "Check NVIDIA_API_KEY (export in terminal or .env file) if images were provided.")
         sys.exit(1)
 
     Path(args.output).write_text(graph.model_dump_json(indent=2, ensure_ascii=False))
-    print(f"[Module A] {len(graph.nodes)} nœud(s) construit(s) -> {args.output}")
+    print(f"[Module A] {len(graph.nodes)} node(s) built -> {args.output}")
 
 
 if __name__ == "__main__":
