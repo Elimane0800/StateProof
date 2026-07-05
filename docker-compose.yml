@@ -17,21 +17,39 @@ services:
 
   backend:
     build:
-      context: ./backend
+      # Repo root context so agents/, config/ and demo/ are in the image.
+      context: .
+      dockerfile: Dockerfile
     environment:
       # psycopg v3 scheme (bare postgresql:// is auto-rewritten in code too).
       DATABASE_URL: postgresql+psycopg://stateproof:stateproof@db:5432/stateproof
-      UPLOADS_DIR: /app/var/uploads
+      UPLOADS_DIR: /app/backend/var/uploads
       MAX_UPLOAD_MB: "200"
       ALLOWED_VIDEO_EXT: ".mp4,.mov,.webm"
+      # Live inspection (ARIA pipeline) — required. Interpolated from the
+      # repo-root .env by docker compose.
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      NVIDIA_MODEL: ${NVIDIA_MODEL:-meta/llama-3.2-90b-vision-instruct}
+      CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173"
     ports:
       - "8000:8080"
     volumes:
-      # Persist uploaded videos on the host so the AI track can read them.
-      - ./backend/var/uploads:/app/var/uploads
+      # Persist audits, artifacts and uploaded videos on the host.
+      - ./backend/var:/app/backend/var
     depends_on:
       db:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:

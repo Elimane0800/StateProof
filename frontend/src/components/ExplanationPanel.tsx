@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { AuditPayload, CursorPatch, Classification, Severity } from "../types/contract";
+import { resolveMediaUrl } from "../api/client";
 import { CLASS_COLORS } from "./TreeNode";
 import { PromptBox } from "./PromptBox";
 
@@ -171,9 +172,9 @@ function EvidencePhotos({
   onReturnUpload: (file: File, url: string) => void;
   onReturnClear: () => void;
 }) {
-  const pickupUrlEffective = pickupMedia?.url ?? (pickupUrl || undefined);
+  const pickupUrlEffective = pickupMedia?.url ?? resolveMediaUrl(pickupUrl);
   const pickupLabel = pickupMedia?.type === "video" ? "Pickup video" : "Pickup";
-  const returnUrlEffective = returnMedia?.url ?? (returnUrl || undefined);
+  const returnUrlEffective = returnMedia?.url ?? resolveMediaUrl(returnUrl);
   const returnLabel = returnMedia?.type === "video" ? "Return video" : "Return photo";
 
   return (

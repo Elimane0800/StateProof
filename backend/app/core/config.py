@@ -43,6 +43,20 @@ class Settings:
         self.openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
         self.openai_model: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
+        # ARIA agent pipeline (live inspection). Modules A/B call the VLM via the
+        # NVIDIA API, so NVIDIA_API_KEY is required for the live path.
+        self.nvidia_api_key: str | None = os.getenv("NVIDIA_API_KEY")
+        self.nvidia_model: str = os.getenv(
+            "NVIDIA_MODEL", "meta/llama-3.2-90b-vision-instruct"
+        )
+        self.checkpoints_path: Path = Path(
+            os.getenv(
+                "CHECKPOINTS_PATH",
+                str(REPO_ROOT / "config" / "checkpoints_vehicule.example.json"),
+            )
+        )
+        self.occupancy_months: int = int(os.getenv("OCCUPANCY_MONTHS", "12"))
+
         # When no key is present (or MOCK_MODE=1), the service serves the mock
         # payload so R4/R5 are never blocked on R1.
         self.mock_mode: bool = _get_bool("MOCK_MODE", default=not self._any_key())

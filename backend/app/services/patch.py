@@ -28,6 +28,31 @@ def token_patch(expected: str, actual: str, location: str) -> CursorPatch:
     )
 
 
+def charge_notice(
+    node_id: str, expected: str, actual: str, cost: int, location: str = ""
+) -> CursorPatch:
+    """Build a copy-ready damage charge notice for a chargeable finding.
+
+    ``diff`` carries the human-readable notice shown in the Studio evidence
+    panel; ``prompt`` is the one-line request behind the Copy button.
+    """
+    notice = (
+        f"CHARGE NOTICE - {node_id}\n"
+        f"Location: {location or node_id}\n"
+        f"Pickup baseline: {expected}\n"
+        f"Return condition: {actual}\n"
+        f"Indicative charge: EUR {cost}\n"
+    )
+    return CursorPatch(
+        prompt=(
+            f"Draft a damage charge notice for '{node_id}': the pickup baseline was "
+            f"'{expected}' and the vehicle was returned '{actual}'. Indicative cost "
+            f"EUR {cost}."
+        ),
+        diff=notice,
+    )
+
+
 def _find_node(node: TreeNode, node_id: str) -> Optional[TreeNode]:
     if node.id == node_id:
         return node

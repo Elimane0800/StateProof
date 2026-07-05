@@ -75,7 +75,7 @@ class AuditPayload(BaseModel):
     audit_id: str
     pr_number: int
     asset_id: Optional[str] = Field(default=None, description="License plate / asset key.")
-    drift_score: int = Field(ge=0, le=999)
+    drift_score: int = Field(ge=0)
     pickup_screenshot_url: Optional[str] = None
     screenshot_url: str
     design_tree: TreeNode

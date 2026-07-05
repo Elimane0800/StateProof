@@ -4,6 +4,18 @@ import { mockDetectComponents } from "../lib/detection";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
+/**
+ * Resolve a media URL for display. Backend-served paths (e.g. "/artifacts/..",
+ * "/demo/..") are prefixed with the API origin; absolute (http/blob/data) URLs
+ * are returned untouched so locally-uploaded blobs and remote images still work.
+ */
+export function resolveMediaUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  if (/^(https?:|blob:|data:)/i.test(url)) return url;
+  if (url.startsWith("/")) return `${API_URL}${url}`;
+  return url;
+}
+
 // The Studio is a pure renderer: on any backend error it falls back to the
 // frozen mock so the demo never shows a blank screen.
 export async function getReport(auditId: string): Promise<AuditPayload> {

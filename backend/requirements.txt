@@ -8,3 +8,10 @@ jsonschema
 openai
 sqlmodel
 psycopg[binary]
+# ARIA agent pipeline (live inspection: Modules A -> B -> D)
+langchain-core>=0.3.68
+langchain-openai>=0.3.16
+langgraph>=0.4.7
+python-dotenv>=1.0.0
+reportlab>=4.3.1
+pillow>=10.0.0
